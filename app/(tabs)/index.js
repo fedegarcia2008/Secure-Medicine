@@ -1,24 +1,55 @@
-import { Text, View, StyleSheet, Pressable } from 'react-native';
+import { useMemo, useState } from 'react';
+import { Text, View, StyleSheet, Pressable, FlatList, Image } from 'react-native';
 import { Link } from 'expo-router';
+import SearchBar from '../../components/SearchBar';
+import { medicamentos } from '../../data/medicamentos';
 
 export default function Home() {
+  const [busqueda, setBusqueda] = useState('');
+
+  const medicamentosFiltrados = useMemo(() => {
+    if (!busqueda.trim()) return medicamentos;
+    return medicamentos.filter((m) =>
+      m.nombre.toLowerCase().includes(busqueda.toLowerCase())
+    );
+  }, [busqueda]);
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>💊 Recordatorios</Text>
+     
+      <View style={styles.header}>
+        <View style={styles.logoContainer}>
 
-      <Text style={styles.subtitle}>
-        No te olvides de tomar tus medicamentos
-      </Text>
-
-      <View style={styles.card}>
-        <Text style={styles.medicine}>Paracetamol</Text>
-        <Text style={styles.info}>1 pastilla · 14:00 hs</Text>
+          <View style={styles.logoPlaceholder}>
+            <Text style={styles.logoPlaceholderText}>LOGO</Text>
+          </View>
+        </View>
+        <View style={styles.titleContainer}>
+          <Text style={styles.title}>Secure Medicine</Text>
+          <Text style={styles.subtitle}>No te olvides de tomar tus medicamentos</Text>
+        </View>
       </View>
 
-      <View style={styles.card}>
-        <Text style={styles.medicine}>Vitamina C</Text>
-        <Text style={styles.info}>1 pastilla · 20:00 hs</Text>
-      </View>
+      {/* Buscador */}
+      <SearchBar value={busqueda} onChangeText={setBusqueda} />
+
+      {/* Lista de medicamentos */}
+      <FlatList
+        data={medicamentosFiltrados}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={{ paddingBottom: 20 }}
+        ListEmptyComponent={
+          <Text style={styles.emptyText}>No se encontraron medicamentos</Text>
+        }
+        renderItem={({ item }) => (
+          <View style={styles.card}>
+            <Text style={styles.medicine}>{item.nombre}</Text>
+            <Text style={styles.info}>
+              {item.categoria}
+            </Text>
+          </View>
+        )}
+      />
 
       <Link href="/agregar" asChild>
         <Pressable style={styles.button}>
@@ -36,15 +67,43 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     backgroundColor: '#f5f7fa',
   },
-  title: {
-    fontSize: 28,
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  logoContainer: {
+    marginRight: 12,
+  },
+  logo: {
+    width: 50,
+    height: 50,
+    borderRadius: 10,
+  },
+  logoPlaceholder: {
+    width: 50,
+    height: 50,
+    borderRadius: 10,
+    backgroundColor: '#e0e0e0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoPlaceholderText: {
+    fontSize: 9,
+    color: '#999',
     fontWeight: 'bold',
-    marginBottom: 10,
+  },
+  titleContainer: {
+    flex: 1,
+  },
+  title: {
+    fontSize: 26,
+    fontWeight: 'bold',
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#666',
-    marginBottom: 25,
+    marginTop: 2,
   },
   card: {
     backgroundColor: 'white',
@@ -60,6 +119,11 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#666',
     marginTop: 5,
+  },
+  emptyText: {
+    textAlign: 'center',
+    color: '#999',
+    marginTop: 30,
   },
   button: {
     backgroundColor: '#4CAF50',
