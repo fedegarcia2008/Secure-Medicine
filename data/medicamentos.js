@@ -1,5 +1,3 @@
-
-
 export const medicamentos = [
   {
     id: '1',
