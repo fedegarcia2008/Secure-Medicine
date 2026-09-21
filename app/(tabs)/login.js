@@ -1,42 +1,32 @@
 import { useState } from 'react';
-import { Text, View, StyleSheet, TextInput, Pressable, Alert, ScrollView } from 'react-native';
+import { Text, View, StyleSheet, TextInput, Pressable, Alert, ScrollView, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import SelectorSexo from '../../components/SelectorSexo';
+import { supabase } from '../../services/Supabase';
 
 export default function Login() {
   const router = useRouter();
 
-  // 'paciente' | 'acompanante' | null
-  const [rol, setRol] = useState(null);
-
   // Si es true, muestra el login simple (email + contraseña)
   // en vez del formulario de registro
   const [modoLogin, setModoLogin] = useState(false);
+  const [cargando, setCargando] = useState(false);
 
   const [apodo, setApodo] = useState('');
   const [email, setEmail] = useState('');
   const [sexo, setSexo] = useState('');
   const [anio, setAnio] = useState('');
   const [contrasena, setContrasena] = useState('');
-  const [codigoPaciente, setCodigoPaciente] = useState('');
 
-  const handleRegistrarse = () => {
-    if (!rol) {
-      Alert.alert('Elegí un rol', 'Seleccioná si sos Paciente o Acompañante');
-      return;
-    }
+  const handleRegistrarse = async () => {
     if (!apodo.trim() || !email.trim() || !contrasena.trim()) {
       Alert.alert('Faltan datos', 'Completá apodo, email y contraseña');
       return;
     }
-    if (rol === 'acompanante' && !codigoPaciente.trim()) {
-      Alert.alert('Falta el código', 'Ingresá el código del paciente para vincularte');
-      return;
-    }
 
-    const anioActual = new Date().getFullYear();          // ← acá
-    const anioNum = parseInt(anio, 10);                    // ← acá
-    if (!anio.trim() || isNaN(anioNum) || anioNum < 1900 || anioNum > anioActual) {  // ← acá
+    const anioActual = new Date().getFullYear();
+    const anioNum = parseInt(anio, 10);
+    if (!anio.trim() || isNaN(anioNum) || anioNum < 1900 || anioNum > anioActual) {
       Alert.alert(
         'Año inválido',
         `Ingresá un año de nacimiento entre 1900 y ${anioActual}`
@@ -44,19 +34,70 @@ export default function Login() {
       return;
     }
 
-    // Falta conectar con Supabase
-    // Si rol === 'paciente' -> después del registro se genera un código
-    // para compartir con el acompañante (se muestra primero en Inicio con
-    // una (x) para cerrar, y luego queda disponible en Ajustes).
+    setCargando(true);
+
+    // 1) Crear el usuario en Supabase Auth
+    const { data, error } = await supabase.auth.signUp({
+      email: email.trim(),
+      password: contrasena,
+    });
+
+    if (error) {
+      setCargando(false);
+      Alert.alert('Error al registrarse', error.message);
+      return;
+    }
+
+    // 2) Guardar los datos extra en la tabla "perfiles"
+    const userId = data.user?.id;
+    if (userId) {
+      const { error: errorPerfil } = await supabase.from('perfiles').insert({
+        id: userId,
+        apodo: apodo.trim(),
+        sexo: sexo || null,
+        anio_nacimiento: anioNum,
+      });
+
+      if (errorPerfil) {
+        setCargando(false);
+        Alert.alert('Error al guardar el perfil', errorPerfil.message);
+        return;
+      }
+    }
+
+    setCargando(false);
+
+    // Si data.session viene null, Supabase requiere confirmar el email
+    // antes de poder loguearse (depende de tu configuración de Auth).
+    if (!data.session) {
+      Alert.alert(
+        'Revisá tu email',
+        'Te enviamos un link para confirmar tu cuenta.'
+      );
+      return;
+    }
+
     router.replace('/');
   };
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!email.trim() || !contrasena.trim()) {
       Alert.alert('Error', 'Completá email y contraseña');
       return;
     }
-    // lógica real de login
+
+    setCargando(true);
+    const { error } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password: contrasena,
+    });
+    setCargando(false);
+
+    if (error) {
+      Alert.alert('Error al ingresar', error.message);
+      return;
+    }
+
     router.replace('/');
   };
 
@@ -64,36 +105,8 @@ export default function Login() {
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>Secure Medicine</Text>
 
+      {/* --- Formulario de registro --- */}
       {!modoLogin && (
-        <>
-          <Text style={styles.subtitle}>Elegí tu rol</Text>
-
-          <View style={styles.rolesRow}>
-            <Pressable
-              style={[styles.rolCard, rol === 'paciente' && styles.rolCardActive]}
-              onPress={() => setRol('paciente')}
-            >
-              <View style={styles.avatarCircle}>
-                <Text style={styles.avatarEmoji}>🧑</Text>
-              </View>
-              <Text style={styles.rolLabel}>Paciente</Text>
-            </Pressable>
-
-            <Pressable
-              style={[styles.rolCard, rol === 'acompanante' && styles.rolCardActive]}
-              onPress={() => setRol('acompanante')}
-            >
-              <View style={styles.avatarCircle}>
-                <Text style={styles.avatarEmoji}>🧑‍🤝‍🧑</Text>
-              </View>
-              <Text style={styles.rolLabel}>Acompañante</Text>
-            </Pressable>
-          </View>
-        </>
-      )}
-
-      {/* --- Formulario de registro (solo si eligió un rol) --- */}
-      {!modoLogin && rol && (
         <View style={styles.form}>
           <TextInput
             style={styles.input}
@@ -134,19 +147,16 @@ export default function Login() {
             onChangeText={setContrasena}
           />
 
-          {rol === 'acompanante' && (
-            <TextInput
-              style={styles.input}
-              placeholder="Código del paciente"
-              placeholderTextColor="#999"
-              autoCapitalize="characters"
-              value={codigoPaciente}
-              onChangeText={setCodigoPaciente}
-            />
-          )}
-
-          <Pressable style={styles.button} onPress={handleRegistrarse}>
-            <Text style={styles.buttonText}>Registrarse</Text>
+          <Pressable
+            style={[styles.button, cargando && styles.buttonDisabled]}
+            onPress={handleRegistrarse}
+            disabled={cargando}
+          >
+            {cargando ? (
+              <ActivityIndicator color="white" />
+            ) : (
+              <Text style={styles.buttonText}>Registrarse</Text>
+            )}
           </Pressable>
         </View>
       )}
@@ -171,8 +181,16 @@ export default function Login() {
             value={contrasena}
             onChangeText={setContrasena}
           />
-          <Pressable style={styles.button} onPress={handleLogin}>
-            <Text style={styles.buttonText}>Ingresar</Text>
+          <Pressable
+            style={[styles.button, cargando && styles.buttonDisabled]}
+            onPress={handleLogin}
+            disabled={cargando}
+          >
+            {cargando ? (
+              <ActivityIndicator color="white" />
+            ) : (
+              <Text style={styles.buttonText}>Ingresar</Text>
+            )}
           </Pressable>
         </View>
       )}
@@ -201,49 +219,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 20,
   },
-  subtitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    textAlign: 'center',
-    marginBottom: 15,
-    color: '#333',
-  },
-  rolesRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 20,
-    marginBottom: 20,
-  },
-  rolCard: {
-    alignItems: 'center',
-    padding: 15,
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: '#e0e0e0',
-    backgroundColor: 'white',
-    width: 130,
-  },
-  rolCardActive: {
-    borderColor: '#4CAF50',
-    backgroundColor: '#eef8ee',
-  },
-  avatarCircle: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#f0f0f0',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  avatarEmoji: {
-    fontSize: 28,
-  },
-  rolLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
-  },
   form: {
     marginTop: 5,
   },
@@ -270,6 +245,9 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: 'center',
     marginTop: 5,
+  },
+  buttonDisabled: {
+    opacity: 0.6,
   },
   buttonText: {
     color: 'white',
