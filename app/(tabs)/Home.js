@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, use } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Modal, StyleSheet, useWindowDimensions } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import QuoteCard from '../../components/Quotecard';
 import { supabase } from '../../services/Supabase';
+import { useRouter } from 'expo-router';
 
 
 const obtenerVentanaDias = (fechaRefStr, diasAtras = 14, diasAdelante = 14) => {
@@ -58,6 +59,7 @@ export default function HoyScreen() {
   const insets = useSafeAreaInsets();
   const { width: widthPantalla } = useWindowDimensions();
   const scrollViewRef = useRef(null);
+  const router = useRouter();
 
   const [diaSeleccionado, setDiaSeleccionado] = useState(HOY_STRING);
   const [diasVisibles, setDiasVisibles] = useState(obtenerVentanaDias(HOY_STRING, 14, 14));
@@ -289,15 +291,16 @@ export default function HoyScreen() {
 
       
       <TouchableOpacity
-        style={[
-          styles.addButton,
-          { bottom: TAB_BAR_HEIGHT + insets.bottom + 16 },
-        ]}
-        activeOpacity={0.85}
-      >
-        <Ionicons name="add-circle-outline" size={22} color="#FFFFFF" />
-        <Text style={styles.addButtonText}>Añadir</Text>
-      </TouchableOpacity>
+  style={[
+    styles.addButton,
+    { bottom: TAB_BAR_HEIGHT + insets.bottom + 16 },
+  ]}
+  activeOpacity={0.85}
+  onPress={() => router.push('/buscador')}
+>
+  <Ionicons name="add-circle-outline" size={22} color="#FFFFFF" />
+  <Text style={styles.addButtonText}>Añadir</Text>
+</TouchableOpacity>
 
       
       <View style={[styles.tabBar, { paddingBottom: 12 + insets.bottom }]}>
