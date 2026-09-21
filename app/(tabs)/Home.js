@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Modal, StyleSheet } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import * as Clipboard from 'expo-clipboard';
 import QuoteCard from '../../components/Quotecard';
+import { supabase } from '../../services/Supabase';
 
 // Datos de ejemplo.
 
@@ -13,7 +15,7 @@ const DIAS_SEMANA = [
   { label: 'Dom.', numero: 20 },
   { label: 'Lun.', numero: 21 },
   { label: 'Mar.', numero: 22 },
-  { label: 'Mié.', numero: 23 },
+  { label: 'Mié.', numero: 25 },
 ];
 
 const TAREAS_RESUELTAS = [
@@ -51,8 +53,38 @@ export default function HoyScreen() {
   const [tareaSeleccionada, setTareaSeleccionada] = useState(null);
   const [tabActiva, setTabActiva] = useState('hoy');
 
+  const [codigo, setCodigo] = useState(null);
+  const [mostrarCodigo, setMostrarCodigo] = useState(true);
+  const [copiado, setCopiado] = useState(false);
+
   const abrirDetalle = (tarea) => setTareaSeleccionada(tarea);
   const cerrarDetalle = () => setTareaSeleccionada(null);
+
+  useEffect(() => {
+    const traerCodigo = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('perfiles')
+        .select('codigo')
+        .eq('id', user.id)
+        .single();
+
+      if (!error && data?.codigo) {
+        setCodigo(data.codigo);
+      }
+    };
+
+    traerCodigo();
+  }, []);
+
+  const copiarCodigo = async () => {
+    if (!codigo) return;
+    await Clipboard.setStringAsync(codigo);
+    setCopiado(true);
+    setTimeout(() => setCopiado(false), 1500);
+  };
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
@@ -77,6 +109,33 @@ export default function HoyScreen() {
           </View>
         </View>
       </View>
+
+      {/* Tarjeta con el código de usuario */}
+      {mostrarCodigo && codigo && (
+        <View style={styles.codeCard}>
+          <View style={styles.codeCardLeft}>
+            <Ionicons name="key-outline" size={18} color="#4caf50" />
+            <Text style={styles.codeCardText}>Tu código: {codigo}</Text>
+          </View>
+
+          <View style={styles.codeCardActions}>
+            <TouchableOpacity onPress={copiarCodigo} style={styles.codeCardButton}>
+              <Ionicons
+                name={copiado ? 'checkmark' : 'copy-outline'}
+                size={18}
+                color={copiado ? '#4caf50' : '#EDEDED'}
+              />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => setMostrarCodigo(false)}
+              style={styles.codeCardButton}
+            >
+              <Ionicons name="close" size={18} color="#8A9094" />
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
 
       {/* Selector de días */}
       <View style={styles.weekRow}>
@@ -286,6 +345,37 @@ const styles = StyleSheet.create({
   streakNumber: {
     color: '#F5F5F5',
     fontWeight: '600',
+  },
+  codeCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginHorizontal: 20,
+    marginBottom: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    backgroundColor: '#15191B',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#2A2F31',
+  },
+  codeCardLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  codeCardText: {
+    color: '#EDEDED',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  codeCardActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  codeCardButton: {
+    padding: 4,
   },
   weekRow: {
     flexDirection: 'row',

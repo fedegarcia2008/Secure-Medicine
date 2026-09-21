@@ -3,6 +3,7 @@ import { Text, View, StyleSheet, TextInput, Pressable, Alert, ScrollView, Activi
 import { useRouter } from 'expo-router';
 import SelectorSexo from '../../components/SelectorSexo';
 import { supabase } from '../../services/Supabase';
+import { generarCodigo } from '../../components/generarCodigo';
 
 export default function Login() {
   const router = useRouter();
@@ -48,35 +49,55 @@ export default function Login() {
       return;
     }
 
-    // 2) Guardar los datos extra en la tabla "perfiles"
+    // 2) Guardar los datos extra en la tabla "perfiles", con un código
+    //    único generado al azar (reintenta si por casualidad ya existe)
     const userId = data.user?.id;
     if (userId) {
-      const { error: errorPerfil } = await supabase.from('perfiles').insert({
-        id: userId,
-        apodo: apodo.trim(),
-        sexo: sexo || null,
-        anio_nacimiento: anioNum,
-      });
+      const MAX_INTENTOS = 5;
+      let codigoFinal = null;
+      let errorFinal = null;
 
-      if (errorPerfil) {
-        setCargando(false);
-        Alert.alert('Error al guardar el perfil', errorPerfil.message);
+      for (let intento = 0; intento < MAX_INTENTOS; intento++) {
+        const codigo = generarCodigo();
+
+        const { error: errorPerfil } = await supabase.from('perfiles').insert({
+          id: userId,
+          apodo: apodo.trim(),
+          sexo: sexo || null,
+          anio_nacimiento: anioNum,
+          codigo,
+        });
+
+        if (!errorPerfil) {
+          codigoFinal = codigo;
+          break;
+        }
+
+        // Código 23505 = violación de restricción "unique" en Postgres.
+        // Si es por otro motivo, no tiene sentido reintentar.
+        const esColision = errorPerfil.code === '23505';
+        if (!esColision) {
+          errorFinal = errorPerfil;
+          break;
+        }
+      }
+
+      setCargando(false);
+
+      if (!codigoFinal) {
+        Alert.alert(
+          'Error al guardar el perfil',
+          errorFinal?.message || 'No se pudo generar un código único, probá de nuevo'
+        );
         return;
       }
-    }
 
-    setCargando(false);
-
-    // Si data.session viene null, Supabase requiere confirmar el email
-    // antes de poder loguearse (depende de tu configuración de Auth).
-    if (!data.session) {
-      Alert.alert(
-        'Revisá tu email',
-        'Te enviamos un link para confirmar tu cuenta.'
-      );
+      Alert.alert('¡Listo!', `Tu código es: ${codigoFinal}\nGuardalo para compartirlo.`);
+      router.replace('/');
       return;
     }
 
+    setCargando(false);
     router.replace('/');
   };
 
