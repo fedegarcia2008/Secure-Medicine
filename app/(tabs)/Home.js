@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef, use } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Modal, StyleSheet, useWindowDimensions } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, Modal, StyleSheet } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
@@ -7,14 +7,18 @@ import QuoteCard from '../../components/Quotecard';
 import { supabase } from '../../services/Supabase';
 import { useRouter } from 'expo-router';
 
-
-const obtenerVentanaDias = (fechaRefStr, diasAtras = 14, diasAdelante = 14) => {
+// Devuelve los 7 días (Lunes a Domingo) de la semana que contiene fechaRefStr.
+const obtenerSemana = (fechaRefStr) => {
   const [year, month, day] = fechaRefStr.split('-').map(Number);
+  const fechaRef = new Date(year, month - 1, day);
+  const diaSemana = fechaRef.getDay(); // 0 = Dom, 1 = Lun, ... 6 = Sáb
+  const offsetLunes = diaSemana === 0 ? -6 : 1 - diaSemana; // días hasta el lunes de esa semana
+
   const nombresDias = ['Dom.', 'Lun.', 'Mar.', 'Mié.', 'Jue.', 'Vie.', 'Sáb.'];
   const dias = [];
 
-  for (let i = -diasAtras; i <= diasAdelante; i++) {
-    const fecha = new Date(year, month - 1, day + i);
+  for (let i = 0; i < 7; i++) {
+    const fecha = new Date(year, month - 1, day + offsetLunes + i);
     const yStr = fecha.getFullYear();
     const mStr = String(fecha.getMonth() + 1).padStart(2, '0');
     const dStr = String(fecha.getDate()).padStart(2, '0');
@@ -46,6 +50,16 @@ const obtenerTituloFecha = (fechaStr) => {
   return `${nombreDia}, ${day} ${nombreMes}`;
 };
 
+// Suma/resta días a una fecha "YYYY-MM-DD" y devuelve el mismo formato.
+const desplazarFecha = (fechaStr, dias) => {
+  const [year, month, day] = fechaStr.split('-').map(Number);
+  const fecha = new Date(year, month - 1, day + dias);
+  const yStr = fecha.getFullYear();
+  const mStr = String(fecha.getMonth() + 1).padStart(2, '0');
+  const dStr = String(fecha.getDate()).padStart(2, '0');
+  return `${yStr}-${mStr}-${dStr}`;
+};
+
 const TAB_BAR_HEIGHT = 56;
 
 const TAB_BAR_ITEMS = [
@@ -57,12 +71,10 @@ const TAB_BAR_ITEMS = [
 
 export default function HoyScreen() {
   const insets = useSafeAreaInsets();
-  const { width: widthPantalla } = useWindowDimensions();
-  const scrollViewRef = useRef(null);
   const router = useRouter();
 
   const [diaSeleccionado, setDiaSeleccionado] = useState(HOY_STRING);
-  const [diasVisibles, setDiasVisibles] = useState(obtenerVentanaDias(HOY_STRING, 14, 14));
+  const [diasVisibles, setDiasVisibles] = useState(obtenerSemana(HOY_STRING));
   const [seccionAbierta, setSeccionAbierta] = useState(true);
   const [tareaSeleccionada, setTareaSeleccionada] = useState(null);
   const [tabActiva, setTabActiva] = useState('hoy');
@@ -77,34 +89,18 @@ export default function HoyScreen() {
   const abrirDetalle = (tarea) => setTareaSeleccionada(tarea);
   const cerrarDetalle = () => setTareaSeleccionada(null);
 
-
-  const centrarDia = (index, animado = false) => {
-    if (index < 0 || !scrollViewRef.current) return;
-
-    const ANCHO_ITEM = 46;
-    const GAP = 12;
-    const PADDING = 16;
-
-    const centroItem = PADDING + index * (ANCHO_ITEM + GAP) + ANCHO_ITEM / 2;
-    const targetX = centroItem - widthPantalla / 2;
-
-    scrollViewRef.current.scrollTo({
-      x: Math.max(0, targetX),
-      animated: animado,
-    });
+  // Mueve la semana visible ±7 días, sin tocar el día seleccionado.
+  const cambiarSemana = (incrementoSemanas) => {
+    const primerDiaActual = diasVisibles[0].fechaCompleta;
+    const nuevaFechaRef = desplazarFecha(primerDiaActual, incrementoSemanas * 7);
+    setDiasVisibles(obtenerSemana(nuevaFechaRef));
   };
 
-  useEffect(() => {
-    const index = diasVisibles.findIndex((d) => d.fechaCompleta === diaSeleccionado);
-    if (index !== -1) {
-      const timer = setTimeout(() => {
-        centrarDia(index, false);
-      }, 50);
-      return () => clearTimeout(timer);
-    }
-  }, [diaSeleccionado, diasVisibles, widthPantalla]);
+  const seleccionarDia = (fechaCompleta) => {
+    setDiaSeleccionado(fechaCompleta);
+  };
 
-  useEffect(() => {
+  React.useEffect(() => {
     const traerCodigo = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -132,7 +128,7 @@ export default function HoyScreen() {
 
   const seleccionarFechaCalendario = (fechaStr) => {
     setDiaSeleccionado(fechaStr);
-    setDiasVisibles(obtenerVentanaDias(fechaStr, 14, 14));
+    setDiasVisibles(obtenerSemana(fechaStr));
     setMostrarCalendario(false);
   };
 
@@ -174,9 +170,9 @@ export default function HoyScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-      
+
       <View style={styles.topContainer}>
-        
+
         <View style={styles.header}>
           <Text style={styles.headerTitle}>{obtenerTituloFecha(diaSeleccionado)}</Text>
           <TouchableOpacity
@@ -187,7 +183,7 @@ export default function HoyScreen() {
           </TouchableOpacity>
         </View>
 
-        
+
         {mostrarCodigo && codigo && (
           <View style={styles.codeCard}>
             <View style={styles.codeCardLeft}>
@@ -214,60 +210,81 @@ export default function HoyScreen() {
           </View>
         )}
 
-        
-        <ScrollView
-          ref={scrollViewRef}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.weekRow}
-        >
-          {diasVisibles.map((dia, index) => {
-            const esHoy = dia.fechaCompleta === HOY_STRING;
-            const esSeleccionado = dia.fechaCompleta === diaSeleccionado;
 
-            return (
-              <TouchableOpacity
-                key={dia.fechaCompleta}
-                style={styles.dayColumn}
-                onPress={() => {
-                  setDiaSeleccionado(dia.fechaCompleta);
-                  centrarDia(index, true);
-                }}
-              >
-                <Text
-                  style={[
-                    styles.dayLabel,
-                    esHoy && styles.dayLabelHoy,
-                    esSeleccionado && styles.dayLabelSelected,
-                  ]}
-                >
-                  {dia.label}
-                </Text>
+        {/* Calendario fijo: semana completa (Lun-Dom), sin scroll.
+            Se recalcula solo a partir del día seleccionado, así que a
+            medida que pasan los días o se elige otra fecha, se acomoda sola.
+            Las flechas de los costados permiten mirar la semana anterior/siguiente
+            sin cambiar el día seleccionado. */}
+        <View style={styles.weekNavContainer}>
+          <TouchableOpacity
+            onPress={() => cambiarSemana(-1)}
+            style={styles.navArrow}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="chevron-back" size={20} color="#6C757D" />
+          </TouchableOpacity>
 
-                <View
-                  style={[
-                    styles.dayCircle,
-                    esHoy && styles.dayCircleHoy,
-                    esSeleccionado && styles.dayCircleSelected,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.dayNumber,
-                      esHoy && styles.dayNumberHoy,
-                      esSeleccionado && styles.dayNumberSelected,
-                    ]}
+          <View style={styles.weekColumn}>
+            <View style={styles.weekDayHeaderRow} pointerEvents="none">
+              {diasVisibles.map((dia) => {
+                const esHoy = dia.fechaCompleta === HOY_STRING;
+                return (
+                  <View key={dia.fechaCompleta} style={styles.weekDayHeaderItem}>
+                    <Text style={[styles.dayLabel, esHoy && styles.dayLabelHoy]}>
+                      {dia.label}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+
+            <View style={styles.weekRow}>
+              {diasVisibles.map((dia) => {
+                const esHoy = dia.fechaCompleta === HOY_STRING;
+                const esSeleccionado = dia.fechaCompleta === diaSeleccionado;
+
+                return (
+                  <TouchableOpacity
+                    key={dia.fechaCompleta}
+                    style={styles.dayColumn}
+                    onPress={() => seleccionarDia(dia.fechaCompleta)}
                   >
-                    {dia.numero}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
+                    <View
+                      style={[
+                        styles.dayCircle,
+                        esHoy && styles.dayCircleHoy,
+                        esSeleccionado && !esHoy && styles.dayCircleSelected,
+                        esSeleccionado && esHoy && styles.dayCircleHoySelected,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.dayNumber,
+                          esHoy && styles.dayNumberHoy,
+                          esSeleccionado && !esHoy && styles.dayNumberSelected,
+                        ]}
+                      >
+                        {dia.numero}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+
+          <TouchableOpacity
+            onPress={() => cambiarSemana(1)}
+            style={styles.navArrow}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="chevron-forward" size={20} color="#6C757D" />
+          </TouchableOpacity>
+        </View>
       </View>
 
-      
+
       <TouchableOpacity
         style={styles.sectionHeader}
         onPress={() => setSeccionAbierta((prev) => !prev)}
@@ -284,12 +301,12 @@ export default function HoyScreen() {
       </TouchableOpacity>
 
 
-    
+
       <View style={styles.emptySpace}>
         <QuoteCard />
       </View>
 
-      
+
       <TouchableOpacity
   style={[
     styles.addButton,
@@ -302,7 +319,7 @@ export default function HoyScreen() {
   <Text style={styles.addButtonText}>Añadir</Text>
 </TouchableOpacity>
 
-      
+
       <View style={[styles.tabBar, { paddingBottom: 12 + insets.bottom }]}>
         {TAB_BAR_ITEMS.map((item) => {
           const activo = item.key === tabActiva;
@@ -325,7 +342,7 @@ export default function HoyScreen() {
         })}
       </View>
 
-     
+
       <Modal
         visible={!!tareaSeleccionada}
         transparent
@@ -355,7 +372,7 @@ export default function HoyScreen() {
         </View>
       </Modal>
 
-      
+
       <Modal
         visible={mostrarCalendario}
         transparent
@@ -394,7 +411,8 @@ export default function HoyScreen() {
                     style={[
                       styles.calendarCell,
                       esHoy && styles.calendarCellHoy,
-                      esSeleccionado && styles.calendarCellSelected,
+                      esSeleccionado && !esHoy && styles.calendarCellSelected,
+                      esSeleccionado && esHoy && styles.calendarCellHoySelected,
                     ]}
                     onPress={() => seleccionarFechaCalendario(item.fechaCompleta)}
                   >
@@ -487,16 +505,37 @@ const styles = StyleSheet.create({
   codeCardButton: {
     padding: 4,
   },
+  // Fila con las flechas a los costados y, en el medio, la columna
+  // con las etiquetas de día + los círculos, siempre fija (sin scroll).
+  weekNavContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+  },
+  navArrow: {
+    width: 28,
+    height: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  weekColumn: {
+    flex: 1,
+  },
+  weekDayHeaderRow: {
+    flexDirection: 'row',
+    marginBottom: 6,
+  },
+  weekDayHeaderItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
   weekRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    gap: 12,
   },
   dayColumn: {
-    width: 46,
+    flex: 1,
     alignItems: 'center',
-    gap: 6,
   },
   dayLabel: {
     color: '#6C757D',
@@ -522,8 +561,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#4caf50',
     borderColor: '#4caf50',
   },
+  // Círculo seleccionado: antes era negro puro (#1A1D1E), ahora un gris
+  // más claro para que no compita tanto visualmente.
   dayCircleSelected: {
-    borderColor: '#1A1D1E',
+    borderColor: '#4A5056',
+    borderWidth: 2,
+  },
+  // "Hoy" seleccionado: mantiene el verde de "hoy" en vez de perderlo
+  // bajo el borde de selección, con un anillo un poco más oscuro para
+  // marcar que además está seleccionado.
+  dayCircleHoySelected: {
+    backgroundColor: '#4caf50',
+    borderColor: '#2E7D32',
     borderWidth: 2,
   },
   dayNumber: {
@@ -709,7 +758,11 @@ const styles = StyleSheet.create({
   },
   calendarCellSelected: {
     borderWidth: 2,
-    borderColor: '#1A1D1E',
+    borderColor: '#4A5056',
+  },
+  calendarCellHoySelected: {
+    borderWidth: 2,
+    borderColor: '#2E7D32',
   },
   calendarCellText: {
     color: '#1A1D1E',
