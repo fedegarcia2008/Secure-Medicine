@@ -11,7 +11,7 @@ const STORAGE_KEY = '@medicamentos_terapia';
 
 // Definimos las rutas exactas de cada archivo dentro de tu carpeta app/
 const TAB_BAR_ITEMS = [
-  { key: 'hoy', label: 'Hoy', icon: 'list-outline', route: '/Home' }, // Si tu archivo es home.js, cambia '/hoy' por '/home'
+  { key: 'hoy', label: 'Hoy', icon: 'list-outline', route: '/Home' }, 
   { key: 'progreso', label: 'Progreso', icon: 'stats-chart-outline', route: '/progreso' },
   { key: 'noticias', label: 'Noticias', icon: 'newspaper-outline', route: '/noticias' },
   { key: 'terapia', label: 'Terapia', icon: 'medkit-outline', route: '/terapia' },

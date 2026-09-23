@@ -31,13 +31,14 @@ export default function QuoteCard() {
           <Text style={styles.hint}>Toca para ver otra frase</Text>
         </>
       )}
+      </TouchableOpacity>
 
-      <AtribucionZenQuotes />
-    </TouchableOpacity>
+      //<AtribucionZenQuotes /> va arriba de touchableOpacity
+    
   );
 }
 
-// ZenQuotes exige mostrar esta atribución cuando se usa la versión gratuita.
+/* ZenQuotes exige mostrar esta atribución cuando se usa la versión gratuita.
 function AtribucionZenQuotes() {
   return (
     <Text
@@ -47,37 +48,40 @@ function AtribucionZenQuotes() {
       Frases de ZenQuotes API
     </Text>
   );
-}
+}*/
 
 const styles = StyleSheet.create({
   card: {
     marginHorizontal: 24,
     padding: 20,
     borderRadius: 16,
-    backgroundColor: '#15191B',
+    backgroundColor: '#cdfbc1',
     alignItems: 'center',
   },
   quote: {
-    color: '#EDEDED',
+    color: '#000000',
     fontSize: 16,
     fontStyle: 'italic',
     textAlign: 'center',
     lineHeight: 22,
   },
   author: {
-    color: '#8A9094',
+    color: '#606365',
     fontSize: 13,
     marginTop: 8,
   },
   hint: {
-    color: '#4caf50',
+    color: '#159719',
     fontSize: 11,
     marginTop: 12,
   },
-  atribucion: {
-    color: '#5A6165',
+
+
+  /* atribucion: {
+    color: '#455863',
     fontSize: 10,
     marginTop: 14,
     textDecorationLine: 'underline',
-  },
+  },*/
+
 });
