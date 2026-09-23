@@ -11,8 +11,8 @@ import { useRouter } from 'expo-router';
 const obtenerSemana = (fechaRefStr) => {
   const [year, month, day] = fechaRefStr.split('-').map(Number);
   const fechaRef = new Date(year, month - 1, day);
-  const diaSemana = fechaRef.getDay(); // 0 = Dom, 1 = Lun, ... 6 = Sáb
-  const offsetLunes = diaSemana === 0 ? -6 : 1 - diaSemana; // días hasta el lunes de esa semana
+  const diaSemana = fechaRef.getDay();
+  const offsetLunes = diaSemana === 0 ? -6 : 1 - diaSemana;
 
   const nombresDias = ['Dom.', 'Lun.', 'Mar.', 'Mié.', 'Jue.', 'Vie.', 'Sáb.'];
   const dias = [];
@@ -50,7 +50,6 @@ const obtenerTituloFecha = (fechaStr) => {
   return `${nombreDia}, ${day} ${nombreMes}`;
 };
 
-// Suma/resta días a una fecha "YYYY-MM-DD" y devuelve el mismo formato.
 const desplazarFecha = (fechaStr, dias) => {
   const [year, month, day] = fechaStr.split('-').map(Number);
   const fecha = new Date(year, month - 1, day + dias);
@@ -62,11 +61,12 @@ const desplazarFecha = (fechaStr, dias) => {
 
 const TAB_BAR_HEIGHT = 56;
 
+// Rutas configuradas según Expo Router
 const TAB_BAR_ITEMS = [
-  { key: 'hoy', label: 'Hoy', icon: 'list-outline' },
-  { key: 'progreso', label: 'Progreso', icon: 'stats-chart-outline' },
-  { key: 'noticias', label: 'Noticias', icon: 'newspaper-outline' },
-  { key: 'terapia', label: 'Terapia', icon: 'medkit-outline' },
+  { key: 'hoy', label: 'Hoy', icon: 'list-outline', route: '/Home' },
+  { key: 'progreso', label: 'Progreso', icon: 'stats-chart-outline', route: '/' },
+  { key: 'noticias', label: 'Noticias', icon: 'newspaper-outline', route: '/' },
+  { key: 'terapia', label: 'Terapia', icon: 'medkit-outline', route: '/terapia' },
 ];
 
 export default function HoyScreen() {
@@ -89,7 +89,6 @@ export default function HoyScreen() {
   const abrirDetalle = (tarea) => setTareaSeleccionada(tarea);
   const cerrarDetalle = () => setTareaSeleccionada(null);
 
-  // Mueve la semana visible ±7 días, sin tocar el día seleccionado.
   const cambiarSemana = (incrementoSemanas) => {
     const primerDiaActual = diasVisibles[0].fechaCompleta;
     const nuevaFechaRef = desplazarFecha(primerDiaActual, incrementoSemanas * 7);
@@ -163,6 +162,13 @@ export default function HoyScreen() {
     setMesVista(nuevoMes);
   };
 
+  const manejarNavegacionTab = (item) => {
+    setTabActiva(item.key);
+    if (item.route) {
+      router.replace(item.route);
+    }
+  };
+
   const mesesNombres = [
     'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
     'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
@@ -170,9 +176,7 @@ export default function HoyScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-
       <View style={styles.topContainer}>
-
         <View style={styles.header}>
           <Text style={styles.headerTitle}>{obtenerTituloFecha(diaSeleccionado)}</Text>
           <TouchableOpacity
@@ -182,7 +186,6 @@ export default function HoyScreen() {
             <Ionicons name="calendar-outline" size={24} color="#1A1D1E" />
           </TouchableOpacity>
         </View>
-
 
         {mostrarCodigo && codigo && (
           <View style={styles.codeCard}>
@@ -210,12 +213,6 @@ export default function HoyScreen() {
           </View>
         )}
 
-
-        {/* Calendario fijo: semana completa (Lun-Dom), sin scroll.
-            Se recalcula solo a partir del día seleccionado, así que a
-            medida que pasan los días o se elige otra fecha, se acomoda sola.
-            Las flechas de los costados permiten mirar la semana anterior/siguiente
-            sin cambiar el día seleccionado. */}
         <View style={styles.weekNavContainer}>
           <TouchableOpacity
             onPress={() => cambiarSemana(-1)}
@@ -284,7 +281,6 @@ export default function HoyScreen() {
         </View>
       </View>
 
-
       <TouchableOpacity
         style={styles.sectionHeader}
         onPress={() => setSeccionAbierta((prev) => !prev)}
@@ -300,25 +296,21 @@ export default function HoyScreen() {
         />
       </TouchableOpacity>
 
-
-
       <View style={styles.emptySpace}>
         <QuoteCard />
       </View>
 
-
       <TouchableOpacity
-  style={[
-    styles.addButton,
-    { bottom: TAB_BAR_HEIGHT + insets.bottom + 16 },
-  ]}
-  activeOpacity={0.85}
-  onPress={() => router.push('/buscador')}
->
-  <Ionicons name="add-circle-outline" size={22} color="#FFFFFF" />
-  <Text style={styles.addButtonText}>Añadir</Text>
-</TouchableOpacity>
-
+        style={[
+          styles.addButton,
+          { bottom: TAB_BAR_HEIGHT + insets.bottom + 16 },
+        ]}
+        activeOpacity={0.85}
+        onPress={() => router.push('/buscador')}
+      >
+        <Ionicons name="add-circle-outline" size={22} color="#FFFFFF" />
+        <Text style={styles.addButtonText}>Añadir</Text>
+      </TouchableOpacity>
 
       <View style={[styles.tabBar, { paddingBottom: 12 + insets.bottom }]}>
         {TAB_BAR_ITEMS.map((item) => {
@@ -327,7 +319,7 @@ export default function HoyScreen() {
             <TouchableOpacity
               key={item.key}
               style={styles.tabItem}
-              onPress={() => setTabActiva(item.key)}
+              onPress={() => manejarNavegacionTab(item)}
             >
               <Ionicons
                 name={item.icon}
@@ -341,7 +333,6 @@ export default function HoyScreen() {
           );
         })}
       </View>
-
 
       <Modal
         visible={!!tareaSeleccionada}
@@ -371,7 +362,6 @@ export default function HoyScreen() {
           </View>
         </View>
       </Modal>
-
 
       <Modal
         visible={mostrarCalendario}
@@ -505,8 +495,6 @@ const styles = StyleSheet.create({
   codeCardButton: {
     padding: 4,
   },
-  // Fila con las flechas a los costados y, en el medio, la columna
-  // con las etiquetas de día + los círculos, siempre fija (sin scroll).
   weekNavContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -545,9 +533,6 @@ const styles = StyleSheet.create({
     color: '#4caf50',
     fontWeight: '700',
   },
-  dayLabelSelected: {
-    color: '#1A1D1E',
-  },
   dayCircle: {
     width: 36,
     height: 36,
@@ -561,15 +546,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#4caf50',
     borderColor: '#4caf50',
   },
-  // Círculo seleccionado: antes era negro puro (#1A1D1E), ahora un gris
-  // más claro para que no compita tanto visualmente.
   dayCircleSelected: {
     borderColor: '#4A5056',
     borderWidth: 2,
   },
-  // "Hoy" seleccionado: mantiene el verde de "hoy" en vez de perderlo
-  // bajo el borde de selección, con un anillo un poco más oscuro para
-  // marcar que además está seleccionado.
   dayCircleHoySelected: {
     backgroundColor: '#4caf50',
     borderColor: '#2E7D32',
@@ -598,35 +578,6 @@ const styles = StyleSheet.create({
     color: '#1A1D1E',
     fontSize: 16,
     fontWeight: '600',
-  },
-  taskList: {
-    maxHeight: 160,
-    paddingHorizontal: 20,
-  },
-  taskItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E8EB',
-  },
-  taskItemLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    flex: 1,
-    marginRight: 10,
-  },
-  taskItemText: {
-    color: '#1A1D1E',
-    fontSize: 15,
-    flexShrink: 1,
-  },
-  taskItemHora: {
-    color: '#6C757D',
-    fontSize: 14,
-    fontWeight: '500',
   },
   emptySpace: {
     flex: 1,
