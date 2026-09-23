@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Modal, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, StyleSheet, Image } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import QuoteCard from '../../components/Quotecard';
 import { supabase } from '../../services/Supabase';
 import { useRouter } from 'expo-router';
+
+// Asegúrate de ajustar el nombre del archivo y extensión según tu imagen en assets
+const logoApp = require('../../assets/images/Secure Medicine.png');
 
 // Devuelve los 7 días (Lunes a Domingo) de la semana que contiene fechaRefStr.
 const obtenerSemana = (fechaRefStr) => {
@@ -178,7 +181,11 @@ export default function HoyScreen() {
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <View style={styles.topContainer}>
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>{obtenerTituloFecha(diaSeleccionado)}</Text>
+          <View style={styles.headerLeft}>
+            <Image source={logoApp} style={styles.logo} resizeMode="contain" />
+            <Text style={styles.headerTitle}>{obtenerTituloFecha(diaSeleccionado)}</Text>
+          </View>
+
           <TouchableOpacity
             style={styles.iconButton}
             onPress={() => setMostrarCalendario(true)}
@@ -452,9 +459,19 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 12,
   },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  logo: {
+    width: 42,
+    height: 42,
+    borderRadius: 6,
+  },
   headerTitle: {
     color: '#1A1D1E',
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: '600',
   },
   iconButton: {
