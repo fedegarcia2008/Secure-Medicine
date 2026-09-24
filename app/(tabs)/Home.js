@@ -7,7 +7,6 @@ import QuoteCard from '../../components/Quotecard';
 import { supabase } from '../../services/Supabase';
 import { useRouter } from 'expo-router';
 
-// Asegúrate de ajustar el nombre del archivo y extensión según tu imagen en assets
 const logoApp = require('../../assets/images/Secure Medicine.png');
 
 // Devuelve los 7 días (Lunes a Domingo) de la semana que contiene fechaRefStr.

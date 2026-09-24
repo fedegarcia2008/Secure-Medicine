@@ -23,7 +23,6 @@ export default function Proximamente({
 
   const [tabActiva, setTabActiva] = useState(activeTab);
 
-  // Navegación entre las pestañas
   const navegarTab = (item) => {
     setTabActiva(item.key);
     if (item.route) {
@@ -172,7 +171,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     textAlign: 'center',
   },
-  // TabBar Inferior
+  
   tabBar: {
     flexDirection: 'row',
     justifyContent: 'space-around',
