@@ -1,3 +1,4 @@
+
 import React, { useCallback, useState } from 'react';
 import {
   View,
@@ -25,14 +26,27 @@ const TAB_BAR_ITEMS = [
 ];
 
 const MESES = [
-  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+  'Enero',
+  'Febrero',
+  'Marzo',
+  'Abril',
+  'Mayo',
+  'Junio',
+  'Julio',
+  'Agosto',
+  'Septiembre',
+  'Octubre',
+  'Noviembre',
+  'Diciembre',
 ];
 
 function formatearFecha(fecha) {
   if (!fecha) return 'Sin fecha';
+
   const date = new Date(fecha);
+
   if (isNaN(date.getTime())) return 'Sin fecha';
+
   return `${date.getDate()} de ${MESES[date.getMonth()]} de ${date.getFullYear()}`;
 }
 
@@ -42,6 +56,7 @@ function InfoRow({ icon, label, value, last }) {
       <View style={styles.infoIcon}>
         <Ionicons name={icon} size={20} color={PRIMARY} />
       </View>
+
       <View style={styles.infoTextContainer}>
         <Text style={styles.infoLabel}>{label}</Text>
         <Text style={styles.infoValue}>{value}</Text>
@@ -57,35 +72,45 @@ export default function Terapia() {
   const [medicamentos, setMedicamentos] = useState([]);
   const [cargando, setCargando] = useState(true);
 
-  // Cuentas enlazadas (Observador / Observado)
   const [cuentasEnlazadas, setCuentasEnlazadas] = useState([]);
-  const [cuentaSeleccionada, setCuentaSeleccionada] = useState('mía'); // 'mía' o ID del perfil observado
+  const [cuentaSeleccionada, setCuentaSeleccionada] = useState('mía');
+
   const [modalEnlazarVisible, setModalEnlazarVisible] = useState(false);
   const [codigoIngresado, setCodigoIngresado] = useState('');
   const [procesandoEnlace, setProcesandoEnlace] = useState(false);
 
   const cargarDatos = async () => {
     setCargando(true);
+
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
       if (!user) return;
 
-      // 1. Cargar cuentas enlazadas donde el usuario logueado es el observador
       const { data: enlazadasData, error: enlaceErr } = await supabase
         .from('cuentas_enlazadas')
         .select(`
           observado_id,
-          perfiles:observado_id ( id, apodo, codigo )
+          perfiles:observado_id (
+            id,
+            apodo,
+            codigo
+          )
         `)
         .eq('observador_id', user.id);
 
       if (!enlaceErr && enlazadasData) {
-        const perfilesObservados = enlazadasData.map((e) => e.perfiles);
+        const perfilesObservados = enlazadasData
+          .map((e) => e.perfiles)
+          .filter(Boolean);
+
         setCuentasEnlazadas(perfilesObservados);
       }
 
-      // 2. Cargar medicamentos según la cuenta seleccionada
-      const idAConsultar = cuentaSeleccionada === 'mía' ? user.id : cuentaSeleccionada;
+      const idAConsultar =
+        cuentaSeleccionada === 'mía' ? user.id : cuentaSeleccionada;
 
       const { data: medsData, error: medsErr } = await supabase
         .from('medicamentos')
@@ -122,7 +147,11 @@ export default function Terapia() {
       if (error) {
         Alert.alert('Error', error.message);
       } else {
-        Alert.alert('Eliminado', `"${nombreMed}" se eliminó de la terapia.`);
+        Alert.alert(
+          'Eliminado',
+          `"${nombreMed}" se eliminó de la terapia.`
+        );
+
         cargarDatos();
       }
     } catch (error) {
@@ -135,11 +164,74 @@ export default function Terapia() {
       'Eliminar medicamento',
       `¿Querés eliminar "${med.nombre || 'este medicamento'}" de tu terapia?`,
       [
-        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Cancelar',
+          style: 'cancel',
+        },
         {
           text: 'Eliminar',
           style: 'destructive',
           onPress: () => eliminarMedicamento(med.id, med.nombre),
+        },
+      ]
+    );
+  };
+
+  const eliminarCuentaEnlazada = (cuenta) => {
+    Alert.alert(
+      'Desvincular cuenta',
+      `¿Querés dejar de supervisar a ${
+        cuenta.apodo || 'esta cuenta'
+      }?`,
+      [
+        {
+          text: 'Cancelar',
+          style: 'cancel',
+        },
+        {
+          text: 'Desvincular',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const {
+                data: { user },
+              } = await supabase.auth.getUser();
+
+              if (!user) return;
+
+              const { error } = await supabase
+                .from('cuentas_enlazadas')
+                .delete()
+                .eq('observador_id', user.id)
+                .eq('observado_id', cuenta.id);
+
+              if (error) {
+                Alert.alert(
+                  'Error',
+                  'No se pudo desvincular la cuenta.'
+                );
+                return;
+              }
+
+              setCuentasEnlazadas((cuentasActuales) =>
+                cuentasActuales.filter((item) => item.id !== cuenta.id)
+              );
+
+              if (cuentaSeleccionada === cuenta.id) {
+                setCuentaSeleccionada('mía');
+              }
+
+              Alert.alert(
+                'Cuenta desvinculada',
+                'La cuenta se eliminó correctamente.'
+              );
+            } catch (error) {
+              Alert.alert(
+                'Error',
+                'Ocurrió un problema al desvincular la cuenta.'
+              );
+            }
+          },
         },
       ]
     );
@@ -152,11 +244,14 @@ export default function Terapia() {
     }
 
     setProcesandoEnlace(true);
+
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
       if (!user) return;
 
-      // Buscar perfil objetivo por el código ingresado
       const { data: perfilEncontrado, error: perfilErr } = await supabase
         .from('perfiles')
         .select('id, apodo')
@@ -164,18 +259,25 @@ export default function Terapia() {
         .single();
 
       if (perfilErr || !perfilEncontrado) {
-        Alert.alert('Código no encontrado', 'Verificá el código e intentá nuevamente.');
+        Alert.alert(
+          'Código no encontrado',
+          'Verificá el código e intentá nuevamente.'
+        );
+
         setProcesandoEnlace(false);
         return;
       }
 
       if (perfilEncontrado.id === user.id) {
-        Alert.alert('Atención', 'No podés vincular tu propio código.');
+        Alert.alert(
+          'Atención',
+          'No podés vincular tu propio código.'
+        );
+
         setProcesandoEnlace(false);
         return;
       }
 
-      // Guardar en la tabla "cuentas_enlazadas"
       const { error: insertErr } = await supabase
         .from('cuentas_enlazadas')
         .insert({
@@ -187,12 +289,19 @@ export default function Terapia() {
 
       if (insertErr) {
         if (insertErr.code === '23505') {
-          Alert.alert('Aviso', 'Ya tenés enlazada esta cuenta.');
+          Alert.alert(
+            'Aviso',
+            'Ya tenés enlazada esta cuenta.'
+          );
         } else {
           Alert.alert('Error', insertErr.message);
         }
       } else {
-        Alert.alert('¡Cuenta enlazada!', `Ahora podés supervisar la terapia de ${perfilEncontrado.apodo}.`);
+        Alert.alert(
+          '¡Cuenta enlazada!',
+          `Ahora podés supervisar la terapia de ${perfilEncontrado.apodo}.`
+        );
+
         setModalEnlazarVisible(false);
         setCodigoIngresado('');
         cargarDatos();
@@ -204,62 +313,127 @@ export default function Terapia() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+    <SafeAreaView
+      style={styles.safeArea}
+      edges={['top', 'left', 'right']}
+    >
       <View style={styles.container}>
-        {/* HEADER */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Terapia</Text>
+
           <TouchableOpacity
             style={styles.linkButton}
             onPress={() => setModalEnlazarVisible(true)}
           >
-            <Ionicons name="people-outline" size={20} color={PRIMARY} />
-            <Text style={styles.linkButtonText}>Enlazar cuenta</Text>
+            <Ionicons
+              name="people-outline"
+              size={20}
+              color={PRIMARY}
+            />
+
+            <Text style={styles.linkButtonText}>
+              Enlazar cuenta
+            </Text>
           </TouchableOpacity>
         </View>
 
-        {/* SELECTOR DE CUENTAS ENLAZADAS */}
         {cuentasEnlazadas.length > 0 && (
           <View style={styles.selectorContainer}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.selectorScroll}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.selectorScroll}
+            >
               <TouchableOpacity
-                style={[styles.chip, cuentaSeleccionada === 'mía' && styles.chipActive]}
+                style={[
+                  styles.chip,
+                  cuentaSeleccionada === 'mía' && styles.chipActive,
+                ]}
                 onPress={() => setCuentaSeleccionada('mía')}
               >
-                <Text style={[styles.chipText, cuentaSeleccionada === 'mía' && styles.chipTextActive]}>
+                <Text
+                  style={[
+                    styles.chipText,
+                    cuentaSeleccionada === 'mía' &&
+                      styles.chipTextActive,
+                  ]}
+                >
                   Mi Terapia
                 </Text>
               </TouchableOpacity>
 
               {cuentasEnlazadas.map((cuenta) => (
-                <TouchableOpacity
+                <View
                   key={cuenta.id}
-                  style={[styles.chip, cuentaSeleccionada === cuenta.id && styles.chipActive]}
-                  onPress={() => setCuentaSeleccionada(cuenta.id)}
+                  style={[
+                    styles.chip,
+                    cuentaSeleccionada === cuenta.id &&
+                      styles.chipActive,
+                  ]}
                 >
-                  <Ionicons
-                    name="eye-outline"
-                    size={14}
-                    color={cuentaSeleccionada === cuenta.id ? '#fff' : '#4a5359'}
-                    style={{ marginRight: 4 }}
-                  />
-                  <Text style={[styles.chipText, cuentaSeleccionada === cuenta.id && styles.chipTextActive]}>
-                    {cuenta.apodo}
-                  </Text>
-                </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.chipAccountButton}
+                    onPress={() =>
+                      setCuentaSeleccionada(cuenta.id)
+                    }
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons
+                      name="eye-outline"
+                      size={14}
+                      color={
+                        cuentaSeleccionada === cuenta.id
+                          ? '#FFFFFF'
+                          : '#4A5359'
+                      }
+                    />
+
+                    <Text
+                      style={[
+                        styles.chipText,
+                        cuentaSeleccionada === cuenta.id &&
+                          styles.chipTextActive,
+                      ]}
+                    >
+                      {cuenta.apodo}
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.removeLinkedButton}
+                    onPress={() =>
+                      eliminarCuentaEnlazada(cuenta)
+                    }
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons
+                      name="close"
+                      size={15}
+                      color={
+                        cuentaSeleccionada === cuenta.id
+                          ? '#FFFFFF'
+                          : '#6C757D'
+                      }
+                    />
+                  </TouchableOpacity>
+                </View>
               ))}
             </ScrollView>
           </View>
         )}
 
-        {/* CONTENIDO */}
         <ScrollView
           style={styles.scrollView}
-          contentContainerStyle={[styles.content, { paddingBottom: 110 + insets.bottom }]}
+          contentContainerStyle={[
+            styles.content,
+            { paddingBottom: 110 + insets.bottom },
+          ]}
           showsVerticalScrollIndicator={false}
         >
           <Text style={styles.sectionTitle}>
-            {cuentaSeleccionada === 'mía' ? 'Mis medicamentos' : 'Medicamentos en seguimiento'}
+            {cuentaSeleccionada === 'mía'
+              ? 'Mis medicamentos'
+              : 'Medicamentos en seguimiento'}
           </Text>
 
           <Text style={styles.subtitle}>
@@ -269,13 +443,25 @@ export default function Terapia() {
           </Text>
 
           {cargando ? (
-            <ActivityIndicator size="large" color={PRIMARY} style={{ marginTop: 40 }} />
+            <ActivityIndicator
+              size="large"
+              color={PRIMARY}
+              style={{ marginTop: 40 }}
+            />
           ) : medicamentos.length === 0 ? (
             <View style={styles.emptyCard}>
               <View style={styles.emptyIcon}>
-                <Ionicons name="medkit-outline" size={30} color={PRIMARY} />
+                <Ionicons
+                  name="medkit-outline"
+                  size={30}
+                  color={PRIMARY}
+                />
               </View>
-              <Text style={styles.emptyTitle}>No hay medicamentos registrados</Text>
+
+              <Text style={styles.emptyTitle}>
+                No hay medicamentos registrados
+              </Text>
+
               <Text style={styles.emptyText}>
                 {cuentaSeleccionada === 'mía'
                   ? 'Agregá tu primer medicamento para verlo guardado en tu terapia.'
@@ -284,25 +470,36 @@ export default function Terapia() {
             </View>
           ) : (
             medicamentos.map((med) => (
-              <View key={med.id} style={styles.medicamentoCard}>
+              <View
+                key={med.id}
+                style={styles.medicamentoCard}
+              >
                 <View style={styles.medicamentoHeader}>
                   <View style={styles.medicamentoIcon}>
                     <Text style={styles.iconText}>💊</Text>
                   </View>
 
                   <View style={styles.medicamentoHeaderText}>
-                    <Text style={styles.medicamentoLabel}>Medicamento</Text>
-                    <Text style={styles.medicamentoNombre}>{med.nombre || 'Sin nombre'}</Text>
+                    <Text style={styles.medicamentoLabel}>
+                      Medicamento
+                    </Text>
+
+                    <Text style={styles.medicamentoNombre}>
+                      {med.nombre || 'Sin nombre'}
+                    </Text>
                   </View>
 
-                  {/* Solo se permite eliminar si son los medicamentos propios */}
                   {cuentaSeleccionada === 'mía' && (
                     <TouchableOpacity
                       style={styles.deleteIconButton}
                       onPress={() => confirmarEliminar(med)}
                       activeOpacity={0.7}
                     >
-                      <Ionicons name="trash-outline" size={20} color="#E53935" />
+                      <Ionicons
+                        name="trash-outline"
+                        size={20}
+                        color="#E53935"
+                      />
                     </TouchableOpacity>
                   )}
                 </View>
@@ -314,21 +511,25 @@ export default function Terapia() {
                   label="Cada cuánto se toma"
                   value={med.frecuencia || 'No especificado'}
                 />
+
                 <InfoRow
                   icon="time-outline"
                   label="Hora"
                   value={med.hora || 'No especificada'}
                 />
+
                 <InfoRow
                   icon="medical-outline"
                   label="Dosis"
                   value={`${med.dosis || '1'} comprimido(s)`}
                 />
+
                 <InfoRow
                   icon="flask-outline"
                   label="Límite de dosis"
                   value={`${med.limite_dosis || '30'} comprimido(s)`}
                 />
+
                 <InfoRow
                   icon="calendar-outline"
                   label="Fecha de inicio"
@@ -340,30 +541,52 @@ export default function Terapia() {
           )}
         </ScrollView>
 
-        {/* BOTÓN AÑADIR (Solo en la cuenta propia) */}
         {cuentaSeleccionada === 'mía' && (
           <TouchableOpacity
-            style={[styles.addButton, { bottom: 72 + insets.bottom }]}
+            style={[
+              styles.addButton,
+              { bottom: 72 + insets.bottom },
+            ]}
             activeOpacity={0.85}
             onPress={() => router.push('/buscador')}
           >
-            <Ionicons name="add-circle-outline" size={22} color="#FFFFFF" />
+            <Ionicons
+              name="add-circle-outline"
+              size={22}
+              color="#FFFFFF"
+            />
+
             <Text style={styles.addButtonText}>Añadir</Text>
           </TouchableOpacity>
         )}
 
-        {/* TAB BAR */}
-        <View style={[styles.tabBar, { paddingBottom: 12 + insets.bottom }]}>
+        <View
+          style={[
+            styles.tabBar,
+            { paddingBottom: 12 + insets.bottom },
+          ]}
+        >
           {TAB_BAR_ITEMS.map((item) => {
             const activo = item.key === 'terapia';
+
             return (
               <TouchableOpacity
                 key={item.key}
                 style={styles.tabItem}
                 onPress={() => router.replace(item.route)}
               >
-                <Ionicons name={item.icon} size={22} color={activo ? PRIMARY : '#6C757D'} />
-                <Text style={[styles.tabLabel, activo && styles.tabLabelActive]}>
+                <Ionicons
+                  name={item.icon}
+                  size={22}
+                  color={activo ? PRIMARY : '#6C757D'}
+                />
+
+                <Text
+                  style={[
+                    styles.tabLabel,
+                    activo && styles.tabLabelActive,
+                  ]}
+                >
                   {item.label}
                 </Text>
               </TouchableOpacity>
@@ -371,11 +594,18 @@ export default function Terapia() {
           })}
         </View>
 
-        {/* MODAL PARA ENLAZAR CUENTA */}
-        <Modal visible={modalEnlazarVisible} transparent animationType="fade">
+        <Modal
+          visible={modalEnlazarVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setModalEnlazarVisible(false)}
+        >
           <View style={styles.overlayModal}>
             <View style={styles.modalCard}>
-              <Text style={styles.modalTitle}>Enlazar Cuenta</Text>
+              <Text style={styles.modalTitle}>
+                Enlazar Cuenta
+              </Text>
+
               <Text style={styles.modalSubtext}>
                 Ingresá el código de la persona que querés supervisar:
               </Text>
@@ -392,9 +622,14 @@ export default function Terapia() {
               <View style={styles.modalButtonsRow}>
                 <TouchableOpacity
                   style={styles.btnCancel}
-                  onPress={() => setModalEnlazarVisible(false)}
+                  onPress={() => {
+                    setModalEnlazarVisible(false);
+                    setCodigoIngresado('');
+                  }}
                 >
-                  <Text style={styles.btnCancelText}>Cancelar</Text>
+                  <Text style={styles.btnCancelText}>
+                    Cancelar
+                  </Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -403,9 +638,14 @@ export default function Terapia() {
                   disabled={procesandoEnlace}
                 >
                   {procesandoEnlace ? (
-                    <ActivityIndicator color="#fff" size="small" />
+                    <ActivityIndicator
+                      color="#FFFFFF"
+                      size="small"
+                    />
                   ) : (
-                    <Text style={styles.btnConfirmText}>Enlazar</Text>
+                    <Text style={styles.btnConfirmText}>
+                      Enlazar
+                    </Text>
                   )}
                 </TouchableOpacity>
               </View>
@@ -416,6 +656,7 @@ export default function Terapia() {
     </SafeAreaView>
   );
 }
+
 
 const styles = StyleSheet.create({
   safeArea: {
@@ -476,6 +717,19 @@ const styles = StyleSheet.create({
   },
   chipActive: {
     backgroundColor: PRIMARY,
+  },
+  chipAccountButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  removeLinkedButton: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 6,
   },
   chipText: {
     color: '#4A5359',
