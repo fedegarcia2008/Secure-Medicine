@@ -1,9 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
-import {View,Text,Pressable,StyleSheet,ScrollView,Modal,TextInput,Platform,} from 'react-native';
+import {
+  View,
+  Text,
+  Pressable,
+  StyleSheet,
+  ScrollView,
+  Modal,
+  TextInput,
+  Platform,
+} from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Notifications from 'expo-notifications';
 
 const PRIMARY = '#4CAF50';
 
@@ -26,8 +34,6 @@ const MESES = [
   'Diciembre',
 ];
 
-
-
 const FRECUENCIA_A_HORAS = {
   'Cada 4 horas': 4,
   'Cada 6 horas': 6,
@@ -41,7 +47,6 @@ const FRECUENCIA_A_HORAS = {
 function obtenerIntervaloHoras(frecuencia) {
   return FRECUENCIA_A_HORAS[frecuencia] ?? null;
 }
-
 
 function calcularHorariosDelDia(horaInicio, intervaloHoras) {
   const [hh, mm] = horaInicio.split(':').map(Number);
@@ -69,16 +74,6 @@ function calcularHorariosDelDia(horaInicio, intervaloHoras) {
   return horarios;
 }
 
-
-
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
-});
-
 function formatearFecha(date) {
   const hoy = new Date();
 
@@ -90,10 +85,9 @@ function formatearFecha(date) {
   if (esHoy) return 'Hoy';
 
   return `${date.getDate()} ${
-    MESES[date.getMonth()]
-  .slice(0, 3)} ${date.getFullYear()}`;
+    MESES[date.getMonth()].slice(0, 3)
+  } ${date.getFullYear()}`;
 }
-
 
 function generarDiasDelMes(mesRef) {
   const anio = mesRef.getFullYear();
@@ -102,8 +96,8 @@ function generarDiasDelMes(mesRef) {
   const primerDia = new Date(anio, mes, 1);
   const ultimoDia = new Date(anio, mes + 1, 0);
 
-  
-  const diaSemanaInicio = (primerDia.getDay() + 6) % 7;
+  const diaSemanaInicio =
+    (primerDia.getDay() + 6) % 7;
 
   const dias = [];
 
@@ -121,44 +115,47 @@ function generarDiasDelMes(mesRef) {
 export default function Recordatorio() {
   const router = useRouter();
 
-  const { nombre, frecuencia } = useLocalSearchParams();
+  const { nombre, frecuencia } =
+    useLocalSearchParams();
 
+  const [fechaInicio, setFechaInicio] =
+    useState(new Date());
 
+  const [calendarioVisible, setCalendarioVisible] =
+    useState(false);
 
-  const [fechaInicio, setFechaInicio] = useState(new Date());
+  const [mesVisible, setMesVisible] =
+    useState(new Date());
 
-  const [calendarioVisible, setCalendarioVisible] = useState(false);
+  const [hora, setHora] =
+    useState('08:00');
 
-  const [mesVisible, setMesVisible] = useState(new Date());
+  const [horaTemp, setHoraTemp] =
+    useState('08:00');
 
- 
+  const [horaVisible, setHoraVisible] =
+    useState(false);
 
-  const [hora, setHora] = useState('08:00');
+  const [dosis, setDosis] =
+    useState(1);
 
-  const [horaTemp, setHoraTemp] = useState('08:00');
+  const [dosisTemp, setDosisTemp] =
+    useState('1');
 
-  const [horaVisible, setHoraVisible] = useState(false);
+  const [dosisVisible, setDosisVisible] =
+    useState(false);
 
-  
+  const [limiteDosis, setLimiteDosis] =
+    useState(30);
 
-  const [dosis, setDosis] = useState(1);
+  const [limiteTemp, setLimiteTemp] =
+    useState('30');
 
-  const [dosisTemp, setDosisTemp] = useState('1');
+  const [limiteVisible, setLimiteVisible] =
+    useState(false);
 
-  const [dosisVisible, setDosisVisible] = useState(false);
-
-
-  const [limiteDosis, setLimiteDosis] = useState(30);
-
-  const [limiteTemp, setLimiteTemp] = useState('30');
-
-  const [limiteVisible, setLimiteVisible] = useState(false);
-
-  
-
-  const [guardando, setGuardando] = useState(false);
-
-
+  const [guardando, setGuardando] =
+    useState(false);
 
   const diasDelMes = useMemo(
     () => generarDiasDelMes(mesVisible),
@@ -175,46 +172,70 @@ export default function Recordatorio() {
     );
   };
 
-  
-
+  /*
+   * NOTIFICACIONES
+   *
+   * iPhone:
+   * - Se cargan las notificaciones.
+   * - Se solicitan permisos.
+   * - Se pueden programar recordatorios.
+   *
+   * Android:
+   * - No se carga expo-notifications.
+   * - La pantalla funciona normalmente.
+   * - Se guardan los datos sin notificaciones.
+   */
   useEffect(() => {
+    if (Platform.OS !== 'ios') {
+      return;
+    }
+
     (async () => {
-      const { status: statusActual } =
-        await Notifications.getPermissionsAsync();
+      try {
+        const NotificationsModule =
+          await import('expo-notifications');
 
-      let statusFinal = statusActual;
+        NotificationsModule.setNotificationHandler({
+          handleNotification: async () => ({
+            shouldShowAlert: true,
+            shouldPlaySound: true,
+            shouldSetBadge: false,
+          }),
+        });
 
-      if (statusActual !== 'granted') {
-        const { status } =
-          await Notifications.requestPermissionsAsync();
+        const {
+          status: statusActual,
+        } =
+          await NotificationsModule.getPermissionsAsync();
 
-        statusFinal = status;
-      }
+        let statusFinal = statusActual;
 
-      if (statusFinal !== 'granted') {
+        if (statusActual !== 'granted') {
+          const { status } =
+            await NotificationsModule.requestPermissionsAsync();
+
+          statusFinal = status;
+        }
+
+        if (statusFinal !== 'granted') {
+          console.log(
+            'Permiso de notificaciones denegado. No se podrán programar recordatorios.'
+          );
+        }
+      } catch (error) {
         console.log(
-          'Permiso de notificaciones denegado. No se podrán programar recordatorios.'
-        );
-      }
-
-      if (Platform.OS === 'android') {
-        await Notifications.setNotificationChannelAsync(
-          'default',
-          {
-            name: 'Recordatorios de medicamentos',
-            importance:
-              Notifications.AndroidImportance.HIGH,
-            sound: true,
-          }
+          'Error cargando las notificaciones:',
+          error
         );
       }
     })();
   }, []);
 
-
-
   const confirmarHora = () => {
-    const limpio = horaTemp.replace(/[^0-9:]/g, '');
+    const limpio = horaTemp.replace(
+      /[^0-9:]/g,
+      ''
+    );
 
     const match = limpio.match(
       /^([0-1]?[0-9]|2[0-3]):?([0-5][0-9])$/
@@ -231,7 +252,6 @@ export default function Recordatorio() {
   };
 
   const handleHoraTextChange = (texto) => {
-    
     const numeros = texto
       .replace(/[^0-9]/g, '')
       .slice(0, 4);
@@ -244,8 +264,6 @@ export default function Recordatorio() {
       );
     }
   };
-
-  
 
   const confirmarDosis = () => {
     const n = parseFloat(
@@ -265,8 +283,6 @@ export default function Recordatorio() {
       : String(n).replace('.', ',');
   };
 
-
-
   const confirmarLimite = () => {
     const n = parseInt(limiteTemp, 10);
 
@@ -277,59 +293,114 @@ export default function Recordatorio() {
     setLimiteVisible(false);
   };
 
-
+  /*
+   * PROGRAMAR NOTIFICACIONES
+   *
+   * Android:
+   * No hace nada y devuelve [].
+   *
+   * iPhone:
+   * Programa todas las notificaciones.
+   */
   const programarNotificaciones = async () => {
+    if (Platform.OS !== 'ios') {
+      console.log(
+        'Android: las notificaciones están desactivadas en Expo Go.'
+      );
+
+      return [];
+    }
+
     try {
+      const NotificationsModule =
+        await import('expo-notifications');
+
       const { status } =
-        await Notifications.getPermissionsAsync();
+        await NotificationsModule.getPermissionsAsync();
 
       if (status !== 'granted') {
         console.log(
           'No hay permiso para programar notificaciones.'
         );
+
         return [];
       }
 
-      const intervaloHoras = obtenerIntervaloHoras(frecuencia);
+      const intervaloHoras =
+        obtenerIntervaloHoras(frecuencia);
 
       const horarios = intervaloHoras
-        ? calcularHorariosDelDia(hora, intervaloHoras)
+        ? calcularHorariosDelDia(
+            hora,
+            intervaloHoras
+          )
         : [
             {
-              hour: Number(hora.split(':')[0]),
-              minute: Number(hora.split(':')[1]),
+              hour: Number(
+                hora.split(':')[0]
+              ),
+              minute: Number(
+                hora.split(':')[1]
+              ),
             },
           ];
 
       const ids = [];
 
-      for (const { hour: hh, minute: mm } of horarios) {
-        const id = await Notifications.scheduleNotificationAsync({
-          content: {
-            title: 'Es hora de tu medicamento 💊',
-            body: `Tomá ${formatearDosis(dosis)} comprimido(s) de ${
-              nombre || 'tu medicamento'
-            }`,
-            sound: true,
-            data: {
-              nombre: nombre || 'Medicamento',
-              hora: `${String(hh).padStart(2, '0')}:${String(
-                mm
-              ).padStart(2, '0')}`,
-            },
-          },
-          trigger: {
-            type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
-            hour: hh,
-            minute: mm,
-            repeats: true,
-          },
-        });
+      for (const {
+        hour: hh,
+        minute: mm,
+      } of horarios) {
+        const id =
+          await NotificationsModule.scheduleNotificationAsync(
+            {
+              content: {
+                title:
+                  'Es hora de tu medicamento 💊',
+
+                body: `Tomá ${formatearDosis(
+                  dosis
+                )} comprimido(s) de ${
+                  nombre || 'tu medicamento'
+                }`,
+
+                sound: true,
+
+                data: {
+                  nombre:
+                    nombre || 'Medicamento',
+
+                  hora: `${String(hh).padStart(
+                    2,
+                    '0'
+                  )}:${String(mm).padStart(
+                    2,
+                    '0'
+                  )}`,
+                },
+              },
+
+              trigger: {
+                type:
+                  NotificationsModule
+                    .SchedulableTriggerInputTypes
+                    .CALENDAR,
+
+                hour: hh,
+                minute: mm,
+
+                repeats: true,
+              },
+            }
+          );
 
         ids.push(id);
       }
 
-      console.log('Notificaciones programadas:', ids);
+      console.log(
+        'Notificaciones programadas:',
+        ids
+      );
 
       return ids;
     } catch (error) {
@@ -337,10 +408,10 @@ export default function Recordatorio() {
         'Error programando notificaciones:',
         error
       );
+
       return [];
     }
   };
-
 
   const handleSiguiente = async () => {
     if (guardando) return;
@@ -348,23 +419,24 @@ export default function Recordatorio() {
     setGuardando(true);
 
     try {
-     
-      const notificationIds = await programarNotificaciones();
+      const notificationIds =
+        await programarNotificaciones();
 
-      // Buscamos los medicamentos que ya están guardados.
-      const datosGuardados = await AsyncStorage.getItem(
-        STORAGE_KEY
-      );
+      const datosGuardados =
+        await AsyncStorage.getItem(
+          STORAGE_KEY
+        );
 
-      const medicamentosGuardados = datosGuardados
-        ? JSON.parse(datosGuardados)
-        : [];
+      const medicamentosGuardados =
+        datosGuardados
+          ? JSON.parse(datosGuardados)
+          : [];
 
-     
       const nuevoMedicamento = {
         id: Date.now().toString(),
 
-        nombre: nombre || 'Medicamento',
+        nombre:
+          nombre || 'Medicamento',
 
         frecuencia:
           frecuencia || 'No especificado',
@@ -376,12 +448,12 @@ export default function Recordatorio() {
 
         dosis: String(dosis),
 
-        limiteDosis: String(limiteDosis),
+        limiteDosis:
+          String(limiteDosis),
 
         notificationIds,
       };
 
-      
       const medicamentosActualizados = [
         ...medicamentosGuardados,
         nuevoMedicamento,
@@ -395,7 +467,6 @@ export default function Recordatorio() {
       );
 
       router.replace('/terapia');
-
     } catch (error) {
       console.log(
         'Error guardando medicamento:',
@@ -409,7 +480,6 @@ export default function Recordatorio() {
   return (
     <View style={styles.container}>
 
-      
       <Pressable
         style={styles.backButton}
         onPress={() => router.back()}
@@ -427,8 +497,6 @@ export default function Recordatorio() {
         showsVerticalScrollIndicator={false}
       >
 
-        
-
         <View style={styles.illustration}>
 
           <Text style={styles.bellEmoji}>
@@ -441,8 +509,6 @@ export default function Recordatorio() {
 
         </View>
 
-        
-
         <Text style={styles.subtitle}>
           {nombre || 'Medicamento'}
         </Text>
@@ -451,11 +517,7 @@ export default function Recordatorio() {
           ¿Cuándo quieres que te lo recuerden?
         </Text>
 
-       
-
         <View style={styles.campos}>
-
-          
 
           <Pressable
             style={styles.campoRow}
@@ -464,13 +526,11 @@ export default function Recordatorio() {
               setCalendarioVisible(true);
             }}
           >
-
             <Text style={styles.campoLabel}>
               Fecha de inicio
             </Text>
 
             <View style={styles.campoValorContainer}>
-
               <Text style={styles.campoValor}>
                 {formatearFecha(fechaInicio)}
               </Text>
@@ -480,14 +540,10 @@ export default function Recordatorio() {
                 size={18}
                 color={PRIMARY}
               />
-
             </View>
-
           </Pressable>
 
           <View style={styles.separador} />
-
-        
 
           <Pressable
             style={styles.campoRow}
@@ -496,13 +552,11 @@ export default function Recordatorio() {
               setHoraVisible(true);
             }}
           >
-
             <Text style={styles.campoLabel}>
               Hora
             </Text>
 
             <View style={styles.campoValorContainer}>
-
               <Text style={styles.campoValor}>
                 {hora}
               </Text>
@@ -512,14 +566,10 @@ export default function Recordatorio() {
                 size={18}
                 color={PRIMARY}
               />
-
             </View>
-
           </Pressable>
 
           <View style={styles.separador} />
-
-          {/* DOSIS */}
 
           <Pressable
             style={styles.campoRow}
@@ -531,13 +581,11 @@ export default function Recordatorio() {
               setDosisVisible(true);
             }}
           >
-
             <Text style={styles.campoLabel}>
               Dosis
             </Text>
 
             <View style={styles.campoValorContainer}>
-
               <Text style={styles.campoValor}>
                 {formatearDosis(dosis)} comprimido(s)
               </Text>
@@ -547,14 +595,10 @@ export default function Recordatorio() {
                 size={18}
                 color={PRIMARY}
               />
-
             </View>
-
           </Pressable>
 
         </View>
-
-       
 
         <View
           style={[
@@ -573,13 +617,11 @@ export default function Recordatorio() {
               setLimiteVisible(true);
             }}
           >
-
             <Text style={styles.campoLabel}>
               Límite de dosis
             </Text>
 
             <View style={styles.campoValorContainer}>
-
               <Text style={styles.campoValor}>
                 {limiteDosis} comprimido(s)
               </Text>
@@ -589,16 +631,12 @@ export default function Recordatorio() {
                 size={18}
                 color={PRIMARY}
               />
-
             </View>
-
           </Pressable>
 
         </View>
 
       </ScrollView>
-
-      {/* BOTÓN GUARDAR */}
 
       <View style={styles.footer}>
 
@@ -610,34 +648,28 @@ export default function Recordatorio() {
           onPress={handleSiguiente}
           disabled={guardando}
         >
-
           <Text style={styles.buttonText}>
             {guardando
               ? 'Guardando...'
               : 'Guardar Registro'}
           </Text>
-
         </Pressable>
 
       </View>
 
-      {/* ========================= */}
       {/* MODAL CALENDARIO */}
-      {/* ========================= */}
 
       <Modal
         visible={calendarioVisible}
         transparent
         animationType="fade"
       >
-
         <Pressable
           style={styles.overlay}
           onPress={() =>
             setCalendarioVisible(false)
           }
         >
-
           <Pressable
             style={styles.modalCard}
             onPress={() => {}}
@@ -701,9 +733,12 @@ export default function Recordatorio() {
                 }
 
                 const seleccionado =
-                  dia.getDate() === fechaInicio.getDate() &&
-                  dia.getMonth() === fechaInicio.getMonth() &&
-                  dia.getFullYear() === fechaInicio.getFullYear();
+                  dia.getDate() ===
+                    fechaInicio.getDate() &&
+                  dia.getMonth() ===
+                    fechaInicio.getMonth() &&
+                  dia.getFullYear() ===
+                    fechaInicio.getFullYear();
 
                 return (
                   <Pressable
@@ -718,7 +753,6 @@ export default function Recordatorio() {
                       setCalendarioVisible(false);
                     }}
                   >
-
                     <Text
                       style={[
                         styles.diaTexto,
@@ -728,7 +762,6 @@ export default function Recordatorio() {
                     >
                       {dia.getDate()}
                     </Text>
-
                   </Pressable>
                 );
               })}
@@ -736,26 +769,22 @@ export default function Recordatorio() {
             </View>
 
           </Pressable>
-
         </Pressable>
-
       </Modal>
 
-     
+      {/* MODAL HORA */}
 
       <Modal
         visible={horaVisible}
         transparent
         animationType="fade"
       >
-
         <Pressable
           style={styles.overlay}
           onPress={() =>
             setHoraVisible(false)
           }
         >
-
           <Pressable
             style={styles.modalCardChico}
             onPress={() => {}}
@@ -768,7 +797,9 @@ export default function Recordatorio() {
             <TextInput
               style={styles.horaInput}
               value={horaTemp}
-              onChangeText={handleHoraTextChange}
+              onChangeText={
+                handleHoraTextChange
+              }
               placeholder="00:00"
               placeholderTextColor="#bbb"
               keyboardType="number-pad"
@@ -780,33 +811,28 @@ export default function Recordatorio() {
               style={styles.modalBoton}
               onPress={confirmarHora}
             >
-
               <Text style={styles.modalBotonTexto}>
                 Confirmar
               </Text>
-
             </Pressable>
 
           </Pressable>
-
         </Pressable>
-
       </Modal>
 
+      {/* MODAL DOSIS */}
 
       <Modal
         visible={dosisVisible}
         transparent
         animationType="fade"
       >
-
         <Pressable
           style={styles.overlay}
           onPress={() =>
             setDosisVisible(false)
           }
         >
-
           <Pressable
             style={styles.modalCardChico}
             onPress={() => {}}
@@ -824,7 +850,10 @@ export default function Recordatorio() {
 
                   const actual =
                     parseFloat(
-                      dosisTemp.replace(',', '.')
+                      dosisTemp.replace(
+                        ',',
+                        '.'
+                      )
                     ) || 0.5;
 
                   const n = Math.max(
@@ -839,13 +868,11 @@ export default function Recordatorio() {
                   );
                 }}
               >
-
                 <Ionicons
                   name="remove"
                   size={22}
                   color={PRIMARY}
                 />
-
               </Pressable>
 
               <TextInput
@@ -869,7 +896,10 @@ export default function Recordatorio() {
 
                   const actual =
                     parseFloat(
-                      dosisTemp.replace(',', '.')
+                      dosisTemp.replace(
+                        ',',
+                        '.'
+                      )
                     ) || 0;
 
                   const n =
@@ -882,13 +912,11 @@ export default function Recordatorio() {
                   );
                 }}
               >
-
                 <Ionicons
                   name="add"
                   size={22}
                   color={PRIMARY}
                 />
-
               </Pressable>
 
             </View>
@@ -901,36 +929,28 @@ export default function Recordatorio() {
               style={styles.modalBoton}
               onPress={confirmarDosis}
             >
-
               <Text style={styles.modalBotonTexto}>
                 Confirmar
               </Text>
-
             </Pressable>
 
           </Pressable>
-
         </Pressable>
-
       </Modal>
 
-      {/* ========================= */}
       {/* MODAL LÍMITE DE DOSIS */}
-      {/* ========================= */}
 
       <Modal
         visible={limiteVisible}
         transparent
         animationType="fade"
       >
-
         <Pressable
           style={styles.overlay}
           onPress={() =>
             setLimiteVisible(false)
           }
         >
-
           <Pressable
             style={styles.modalCardChico}
             onPress={() => {}}
@@ -948,7 +968,10 @@ export default function Recordatorio() {
 
                   const n = Math.max(
                     1,
-                    (parseInt(limiteTemp, 10) || 1) - 1
+                    (parseInt(
+                      limiteTemp,
+                      10
+                    ) || 1) - 1
                   );
 
                   setLimiteTemp(
@@ -956,13 +979,11 @@ export default function Recordatorio() {
                   );
                 }}
               >
-
                 <Ionicons
                   name="remove"
                   size={22}
                   color={PRIMARY}
                 />
-
               </Pressable>
 
               <TextInput
@@ -995,13 +1016,11 @@ export default function Recordatorio() {
                   );
                 }}
               >
-
                 <Ionicons
                   name="add"
                   size={22}
                   color={PRIMARY}
                 />
-
               </Pressable>
 
             </View>
@@ -1010,17 +1029,13 @@ export default function Recordatorio() {
               style={styles.modalBoton}
               onPress={confirmarLimite}
             >
-
               <Text style={styles.modalBotonTexto}>
                 Confirmar
               </Text>
-
             </Pressable>
 
           </Pressable>
-
         </Pressable>
-
       </Modal>
 
     </View>
@@ -1152,8 +1167,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
- 
-
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.4)',
@@ -1185,8 +1198,6 @@ const styles = StyleSheet.create({
     color: '#222',
     marginBottom: 16,
   },
-
-
 
   calendarHeader: {
     flexDirection: 'row',
@@ -1243,8 +1254,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
- 
-
   horaInput: {
     fontSize: 32,
     fontWeight: '700',
@@ -1256,10 +1265,6 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     textAlign: 'center',
   },
-
-  // -----------------------------
-  // STEPPER
-  // -----------------------------
 
   stepperRow: {
     flexDirection: 'row',

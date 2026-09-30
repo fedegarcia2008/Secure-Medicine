@@ -47,9 +47,6 @@ export default function AgregarFrecuencia() {
     'Cada 8 horas',
     'Cada 12 horas',
     'Una vez al día',
-    'Dos veces al día',
-    'Tres veces al día',
-    'Según indicación médica',
   ];
 
   return (
