@@ -65,7 +65,7 @@ const TAB_BAR_HEIGHT = 56;
 
 // Rutas configuradas según Expo Router
 const TAB_BAR_ITEMS = [
-  { key: 'hoy', label: 'Hoy', icon: 'list-outline', route: '/Home' },
+  { key: 'hoy', label: 'Home', icon: 'list-outline', route: '/Home' },
   { key: 'progreso', label: 'Progreso', icon: 'stats-chart-outline', route: '/progreso' },
   { key: 'noticias', label: 'Noticias', icon: 'newspaper-outline', route: '/noticias' },
   { key: 'terapia', label: 'Terapia', icon: 'medkit-outline', route: '/terapia' },

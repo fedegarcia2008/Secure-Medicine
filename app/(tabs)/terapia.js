@@ -10,7 +10,7 @@ const PRIMARY = '#4caf50';
 const STORAGE_KEY = '@medicamentos_terapia';
 
 const TAB_BAR_ITEMS = [
-  { key: 'hoy', label: 'Hoy', icon: 'list-outline', route: '/Home' },
+  { key: 'hoy', label: 'Home', icon: 'list-outline', route: '/Home' },
   { key: 'progreso', label: 'Progreso', icon: 'stats-chart-outline', route: '/progreso' },
   { key: 'noticias', label: 'Noticias', icon: 'newspaper-outline', route: '/noticias' },
   { key: 'terapia', label: 'Terapia', icon: 'medkit-outline', route: '/terapia' },
@@ -42,6 +42,29 @@ function InfoRow({ icon, label, value, last }) {
   );
 }
 
+// Cancela TODAS las notificaciones de un medicamento:
+// 1) por los ids guardados, 2) por medicamentoId en la data (por seguridad)
+async function cancelarNotificacionesDeMedicamento(medicamento) {
+  for (const id of medicamento?.notificationIds || []) {
+    try {
+      await Notifications.cancelScheduledNotificationAsync(id);
+    } catch (e) {
+      console.log('Error cancelando notificación', id, e);
+    }
+  }
+
+  try {
+    const programadas = await Notifications.getAllScheduledNotificationsAsync();
+    for (const n of programadas) {
+      if (n.content?.data?.medicamentoId === medicamento?.id) {
+        await Notifications.cancelScheduledNotificationAsync(n.identifier);
+      }
+    }
+  } catch (e) {
+    console.log('Error buscando notificaciones programadas:', e);
+  }
+}
+
 export default function Terapia() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -68,11 +91,8 @@ export default function Terapia() {
     try {
       const medicamento = medicamentos[index];
 
-      // Cancelar todas las notificaciones programadas de este medicamento
-      const ids = medicamento.notificationIds || [];
-      for (const id of ids) {
-        await Notifications.cancelScheduledNotificationAsync(id);
-      }
+      // Primero cancelar las notificaciones programadas
+      await cancelarNotificacionesDeMedicamento(medicamento);
 
       const nuevaLista = medicamentos.filter((_, i) => i !== index);
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(nuevaLista));
