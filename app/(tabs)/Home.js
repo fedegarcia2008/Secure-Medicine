@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Modal, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, StyleSheet, Image } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import QuoteCard from '../../components/Quotecard';
 import { supabase } from '../../services/Supabase';
 import { useRouter } from 'expo-router';
+
+const logoApp = require('../../assets/images/Secure Medicine.png');
 
 // Devuelve los 7 días (Lunes a Domingo) de la semana que contiene fechaRefStr.
 const obtenerSemana = (fechaRefStr) => {
@@ -63,9 +65,9 @@ const TAB_BAR_HEIGHT = 56;
 
 // Rutas configuradas según Expo Router
 const TAB_BAR_ITEMS = [
-  { key: 'hoy', label: 'Hoy', icon: 'list-outline', route: '/Home' },
-  { key: 'progreso', label: 'Progreso', icon: 'stats-chart-outline', route: '/' },
-  { key: 'noticias', label: 'Noticias', icon: 'newspaper-outline', route: '/' },
+  { key: 'hoy', label: 'Home', icon: 'list-outline', route: '/Home' },
+  { key: 'progreso', label: 'Progreso', icon: 'stats-chart-outline', route: '/progreso' },
+  { key: 'noticias', label: 'Noticias', icon: 'newspaper-outline', route: '/noticias' },
   { key: 'terapia', label: 'Terapia', icon: 'medkit-outline', route: '/terapia' },
 ];
 
@@ -178,7 +180,11 @@ export default function HoyScreen() {
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <View style={styles.topContainer}>
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>{obtenerTituloFecha(diaSeleccionado)}</Text>
+          <View style={styles.headerLeft}>
+            <Image source={logoApp} style={styles.logo} resizeMode="contain" />
+            <Text style={styles.headerTitle}>{obtenerTituloFecha(diaSeleccionado)}</Text>
+          </View>
+
           <TouchableOpacity
             style={styles.iconButton}
             onPress={() => setMostrarCalendario(true)}
@@ -452,9 +458,19 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 12,
   },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  logo: {
+    width: 42,
+    height: 42,
+    borderRadius: 6,
+  },
   headerTitle: {
     color: '#1A1D1E',
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: '600',
   },
   iconButton: {

@@ -1,5 +1,5 @@
-import HoyScreen from './(tabs)/Home';
+import Login from './(tabs)/login';
 
 export default function Index() {
-  return <HoyScreen />;
+  return <Login />;
 }

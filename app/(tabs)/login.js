@@ -8,7 +8,7 @@ import { generarCodigo } from '../../components/generarCodigo';
 export default function Login() {
   const router = useRouter();
 
-  // Si es true, muestra el login simple (email + contraseña)
+  // Si es true, muestra el login  (email + contraseña)
   // en vez del formulario de registro
   const [modoLogin, setModoLogin] = useState(false);
   const [cargando, setCargando] = useState(false);
@@ -93,12 +93,12 @@ export default function Login() {
       }
 
       Alert.alert('¡Listo!', `Tu código es: ${codigoFinal}\nGuardalo para compartirlo.`);
-      router.replace('/');
+      router.replace('/Home');
       return;
     }
 
     setCargando(false);
-    router.replace('/');
+    router.replace('/Home');
   };
 
   const handleLogin = async () => {
@@ -119,7 +119,7 @@ export default function Login() {
       return;
     }
 
-    router.replace('/');
+    router.replace('/Home');
   };
 
   return (
