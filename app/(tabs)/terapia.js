@@ -1,568 +1,431 @@
-import React, {useCallback,useState,} from 'react';
-import {View,Text,TouchableOpacity,StyleSheet,ScrollView,Alert,Platform,} from 'react-native';
-import {SafeAreaView,useSafeAreaInsets,} from 'react-native-safe-area-context';
+import React, { useCallback, useState } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  Alert,
+  Modal,
+  TextInput,
+  ActivityIndicator,
+} from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import {useFocusEffect,useRouter,} from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { supabase } from '../../services/Supabase';
 
 const PRIMARY = '#4caf50';
-const STORAGE_KEY = '@medicamentos_terapia';
+
 const TAB_BAR_ITEMS = [
-  {
-    key: 'hoy',
-    label: 'Home',
-    icon: 'list-outline',
-    route: '/Home',
-  },
-  {
-    key: 'progreso',
-    label: 'Progreso',
-    icon: 'stats-chart-outline',
-    route: '/progreso',
-  },
-  {
-    key: 'noticias',
-    label: 'Noticias',
-    icon: 'newspaper-outline',
-    route: '/noticias',
-  },
-  {
-    key: 'terapia',
-    label: 'Terapia',
-    icon: 'medkit-outline',
-    route: '/terapia',
-  },
+  { key: 'hoy', label: 'Home', icon: 'list-outline', route: '/Home' },
+  { key: 'progreso', label: 'Progreso', icon: 'stats-chart-outline', route: '/progreso' },
+  { key: 'noticias', label: 'Noticias', icon: 'newspaper-outline', route: '/noticias' },
+  { key: 'terapia', label: 'Terapia', icon: 'medkit-outline', route: '/terapia' },
 ];
 
 const MESES = [
-  'Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre',];
+  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+];
 
 function formatearFecha(fecha) {
+  if (!fecha) return 'Sin fecha';
   const date = new Date(fecha);
-
-  if (!fecha || isNaN(date.getTime())) {
-    return 'Sin fecha';
-  }
-
-  return `${date.getDate()} de ${
-    MESES[date.getMonth()]
-  } de ${date.getFullYear()}`;
+  if (isNaN(date.getTime())) return 'Sin fecha';
+  return `${date.getDate()} de ${MESES[date.getMonth()]} de ${date.getFullYear()}`;
 }
 
-// Fila reutilizable
-function InfoRow({icon,label,value,last,}) {
+function InfoRow({ icon, label, value, last }) {
   return (
-    <View
-      style={[
-        styles.infoRow,
-        last && styles.lastInfoRow,
-      ]}
-    >
+    <View style={[styles.infoRow, last && styles.lastInfoRow]}>
       <View style={styles.infoIcon}>
-        <Ionicons
-          name={icon}
-          size={20}
-          color={PRIMARY}
-        />
+        <Ionicons name={icon} size={20} color={PRIMARY} />
       </View>
-
       <View style={styles.infoTextContainer}>
-        <Text style={styles.infoLabel}>
-          {label}
-        </Text>
-
-        <Text style={styles.infoValue}>
-          {value}
-        </Text>
+        <Text style={styles.infoLabel}>{label}</Text>
+        <Text style={styles.infoValue}>{value}</Text>
       </View>
     </View>
   );
 }
 
-/*
- * Cancela las notificaciones de un medicamento.
- *
- * iPhone:
- * - Cancela las notificaciones guardadas.
- * - Busca también notificaciones por medicamentoId.
- *
- * Android:
- * - No hace nada con Notifications.
- * - Esto permite que la pantalla funcione
- *   correctamente en Expo Go.
- */
-async function cancelarNotificacionesDeMedicamento(
-  medicamento
-) {
-  // Android no utiliza expo-notifications
-  if (Platform.OS !== 'ios') {
-    return;
-  }
-
-  try {
-    const NotificationsModule =
-      await import('expo-notifications');
-
-    // 1. Cancelar por IDs guardados
-    for (
-      const id of medicamento?.notificationIds || []
-    ) {
-      try {
-        await NotificationsModule.cancelScheduledNotificationAsync(
-          id
-        );
-      } catch (e) {
-        console.log(
-          'Error cancelando notificación',
-          id,
-          e
-        );
-      }
-    }
-
-    // 2. Buscar notificaciones programadas
-    try {
-      const programadas =
-        await NotificationsModule.getAllScheduledNotificationsAsync();
-
-      for (const n of programadas) {
-        if (
-          n.content?.data?.medicamentoId ===
-          medicamento?.id
-        ) {
-          await NotificationsModule.cancelScheduledNotificationAsync(
-            n.identifier
-          );
-        }
-      }
-    } catch (e) {
-      console.log(
-        'Error buscando notificaciones programadas:',
-        e
-      );
-    }
-  } catch (error) {
-    console.log(
-      'Error cargando notificaciones:',
-      error
-    );
-  }
-}
-
 export default function Terapia() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
-  const insets =
-    useSafeAreaInsets();
+  const [medicamentos, setMedicamentos] = useState([]);
+  const [cargando, setCargando] = useState(true);
 
-  const [medicamentos, setMedicamentos] =
-    useState([]);
+  // Cuentas enlazadas (Observador / Observado)
+  const [cuentasEnlazadas, setCuentasEnlazadas] = useState([]);
+  const [cuentaSeleccionada, setCuentaSeleccionada] = useState('mía'); // 'mía' o ID del perfil observado
+  const [modalEnlazarVisible, setModalEnlazarVisible] = useState(false);
+  const [codigoIngresado, setCodigoIngresado] = useState('');
+  const [procesandoEnlace, setProcesandoEnlace] = useState(false);
 
-  const cargarMedicamentos =
-    async () => {
-      try {
-        const datos =
-          await AsyncStorage.getItem(
-            STORAGE_KEY
-          );
+  const cargarDatos = async () => {
+    setCargando(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-        const lista = datos
-          ? JSON.parse(datos)
-          : [];
+      // 1. Cargar cuentas enlazadas donde el usuario logueado es el observador
+      const { data: enlazadasData, error: enlaceErr } = await supabase
+        .from('cuentas_enlazadas')
+        .select(`
+          observado_id,
+          perfiles:observado_id ( id, apodo, codigo )
+        `)
+        .eq('observador_id', user.id);
 
-        setMedicamentos(
-          Array.isArray(lista)
-            ? lista
-            : []
-        );
-      } catch (error) {
-        console.log(
-          'Error cargando medicamentos:',
-          error
-        );
-
-        setMedicamentos([]);
+      if (!enlaceErr && enlazadasData) {
+        const perfilesObservados = enlazadasData.map((e) => e.perfiles);
+        setCuentasEnlazadas(perfilesObservados);
       }
-    };
+
+      // 2. Cargar medicamentos según la cuenta seleccionada
+      const idAConsultar = cuentaSeleccionada === 'mía' ? user.id : cuentaSeleccionada;
+
+      const { data: medsData, error: medsErr } = await supabase
+        .from('medicamentos')
+        .select('*')
+        .eq('perfil_id', idAConsultar)
+        .eq('en_tratamiento', true)
+        .order('creado_en', { ascending: false });
+
+      if (medsErr) {
+        console.log('Error cargando medicamentos:', medsErr.message);
+      } else {
+        setMedicamentos(medsData || []);
+      }
+    } catch (error) {
+      console.log('Error en cargarDatos:', error);
+    } finally {
+      setCargando(false);
+    }
+  };
 
   useFocusEffect(
     useCallback(() => {
-      cargarMedicamentos();
-    }, [])
+      cargarDatos();
+    }, [cuentaSeleccionada])
   );
 
-  const eliminarMedicamento =
-    async (index) => {
-      try {
-        const medicamento =
-          medicamentos[index];
+  const eliminarMedicamento = async (idMedicamento, nombreMed) => {
+    try {
+      const { error } = await supabase
+        .from('medicamentos')
+        .delete()
+        .eq('id', idMedicamento);
 
-        // En iPhone cancela las notificaciones.
-        // En Android esta función no hace nada.
-        await cancelarNotificacionesDeMedicamento(
-          medicamento
-        );
-
-        const nuevaLista =
-          medicamentos.filter(
-            (_, i) => i !== index
-          );
-
-        await AsyncStorage.setItem(
-          STORAGE_KEY,
-          JSON.stringify(nuevaLista)
-        );
-
-        setMedicamentos(nuevaLista);
-      } catch (error) {
-        console.log(
-          'Error eliminando medicamento:',
-          error
-        );
-
-        Alert.alert(
-          'Error',
-          'No se pudo eliminar el medicamento. Intentá de nuevo.'
-        );
+      if (error) {
+        Alert.alert('Error', error.message);
+      } else {
+        Alert.alert('Eliminado', `"${nombreMed}" se eliminó de la terapia.`);
+        cargarDatos();
       }
-    };
+    } catch (error) {
+      Alert.alert('Error', 'No se pudo eliminar el medicamento.');
+    }
+  };
 
-  const confirmarEliminar = (
-    medicamento,
-    index
-  ) => {
+  const confirmarEliminar = (med) => {
     Alert.alert(
       'Eliminar medicamento',
-
-      `¿Querés eliminar "${
-        medicamento.nombre ||
-        'este medicamento'
-      }" de tu terapia?`,
-
+      `¿Querés eliminar "${med.nombre || 'este medicamento'}" de tu terapia?`,
       [
-        {
-          text: 'Cancelar',
-          style: 'cancel',
-        },
-
+        { text: 'Cancelar', style: 'cancel' },
         {
           text: 'Eliminar',
           style: 'destructive',
-
-          onPress: () =>
-            eliminarMedicamento(index),
+          onPress: () => eliminarMedicamento(med.id, med.nombre),
         },
       ]
     );
   };
 
+  const handleEnlazarCuenta = async () => {
+    if (!codigoIngresado.trim()) {
+      Alert.alert('Error', 'Ingresá un código válido.');
+      return;
+    }
+
+    setProcesandoEnlace(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Buscar perfil objetivo por el código ingresado
+      const { data: perfilEncontrado, error: perfilErr } = await supabase
+        .from('perfiles')
+        .select('id, apodo')
+        .eq('codigo', codigoIngresado.trim().toUpperCase())
+        .single();
+
+      if (perfilErr || !perfilEncontrado) {
+        Alert.alert('Código no encontrado', 'Verificá el código e intentá nuevamente.');
+        setProcesandoEnlace(false);
+        return;
+      }
+
+      if (perfilEncontrado.id === user.id) {
+        Alert.alert('Atención', 'No podés vincular tu propio código.');
+        setProcesandoEnlace(false);
+        return;
+      }
+
+      // Guardar en la tabla "cuentas_enlazadas"
+      const { error: insertErr } = await supabase
+        .from('cuentas_enlazadas')
+        .insert({
+          observador_id: user.id,
+          observado_id: perfilEncontrado.id,
+        });
+
+      setProcesandoEnlace(false);
+
+      if (insertErr) {
+        if (insertErr.code === '23505') {
+          Alert.alert('Aviso', 'Ya tenés enlazada esta cuenta.');
+        } else {
+          Alert.alert('Error', insertErr.message);
+        }
+      } else {
+        Alert.alert('¡Cuenta enlazada!', `Ahora podés supervisar la terapia de ${perfilEncontrado.apodo}.`);
+        setModalEnlazarVisible(false);
+        setCodigoIngresado('');
+        cargarDatos();
+      }
+    } catch (error) {
+      setProcesandoEnlace(false);
+      Alert.alert('Error', 'No se pudo realizar el enlace.');
+    }
+  };
+
   return (
-    <SafeAreaView
-      style={styles.safeArea}
-      edges={[
-        'top',
-        'left',
-        'right',
-      ]}
-    >
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <View style={styles.container}>
-
         {/* HEADER */}
-
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>
-            Terapia
-          </Text>
+          <Text style={styles.headerTitle}>Terapia</Text>
+          <TouchableOpacity
+            style={styles.linkButton}
+            onPress={() => setModalEnlazarVisible(true)}
+          >
+            <Ionicons name="people-outline" size={20} color={PRIMARY} />
+            <Text style={styles.linkButtonText}>Enlazar cuenta</Text>
+          </TouchableOpacity>
         </View>
 
-        {/* CONTENIDO */}
-
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={[
-            styles.content,
-            {
-              paddingBottom:
-                110 +
-                insets.bottom,
-            },
-          ]}
-          showsVerticalScrollIndicator={
-            false
-          }
-        >
-          <Text
-            style={styles.sectionTitle}
-          >
-            Mis medicamentos
-          </Text>
-
-          <Text
-            style={styles.subtitle}
-          >
-            Acá podés consultar los medicamentos que tenés registrados en tu terapia.
-          </Text>
-
-          {medicamentos.length === 0 ? (
-
-            <View
-              style={styles.emptyCard}
-            >
-              <View
-                style={styles.emptyIcon}
+        {/* SELECTOR DE CUENTAS ENLAZADAS */}
+        {cuentasEnlazadas.length > 0 && (
+          <View style={styles.selectorContainer}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.selectorScroll}>
+              <TouchableOpacity
+                style={[styles.chip, cuentaSeleccionada === 'mía' && styles.chipActive]}
+                onPress={() => setCuentaSeleccionada('mía')}
               >
-                <Ionicons
-                  name="medkit-outline"
-                  size={30}
-                  color={PRIMARY}
-                />
-              </View>
+                <Text style={[styles.chipText, cuentaSeleccionada === 'mía' && styles.chipTextActive]}>
+                  Mi Terapia
+                </Text>
+              </TouchableOpacity>
 
-              <Text
-                style={styles.emptyTitle}
-              >
-                No tenés medicamentos registrados
-              </Text>
-
-              <Text
-                style={styles.emptyText}
-              >
-                Agregá tu primer medicamento para verlo guardado en tu terapia.
-              </Text>
-            </View>
-
-          ) : (
-
-            medicamentos.map(
-              (med, index) => (
-
-                <View
-                  key={
-                    med.id ||
-                    `${med.nombre}-${index}`
-                  }
-                  style={
-                    styles.medicamentoCard
-                  }
-                >
-
-
-                  <View
-                    style={
-                      styles.medicamentoHeader
-                    }
-                  >
-
-                    <View
-                      style={
-                        styles.medicamentoIcon
-                      }
-                    >
-                      <Text
-                        style={
-                          styles.iconText
-                        }
-                      >
-                        💊
-                      </Text>
-                    </View>
-
-                    <View
-                      style={
-                        styles.medicamentoHeaderText
-                      }
-                    >
-                      <Text
-                        style={
-                          styles.medicamentoLabel
-                        }
-                      >
-                        Medicamento
-                      </Text>
-
-                      <Text
-                        style={
-                          styles.medicamentoNombre
-                        }
-                      >
-                        {med.nombre ||
-                          'Sin nombre'}
-                      </Text>
-                    </View>
-
-                    <TouchableOpacity
-                      style={
-                        styles.deleteIconButton
-                      }
-                      onPress={() =>
-                        confirmarEliminar(
-                          med,
-                          index
-                        )
-                      }
-                      activeOpacity={0.7}
-                    >
-                      <Ionicons
-                        name="trash-outline"
-                        size={20}
-                        color="#E53935"
-                      />
-                    </TouchableOpacity>
-
-                  </View>
-
-                  <View
-                    style={styles.separador}
-                  />
-
-                  <InfoRow
-                    icon="repeat-outline"
-                    label="Cada cuánto se toma"
-                    value={
-                      med.frecuencia ||
-                      'No especificado'
-                    }
-                  />
-
-                  <InfoRow
-                    icon="time-outline"
-                    label="Hora"
-                    value={
-                      med.hora ||
-                      'No especificada'
-                    }
-                  />
-
-                  <InfoRow
-                    icon="medical-outline"
-                    label="Dosis"
-                    value={`${med.dosis || '1'} comprimido(s)`}
-                  />
-
-                  <InfoRow
-                    icon="flask-outline"
-                    label="Límite de dosis"
-                    value={`${med.limiteDosis || '30'} comprimido(s)`}
-                  />
-
-                  <InfoRow
-                    icon="calendar-outline"
-                    label="Fecha de inicio"
-                    value={formatearFecha(
-                      med.fechaInicio
-                    )}
-                    last
-                  />
-
-                </View>
-              )
-            )
-
-          )}
-
-        </ScrollView>
-
-        {/* BOTÓN AÑADIR */}
-
-        <TouchableOpacity
-          style={[
-            styles.addButton,
-            {
-              bottom:
-                72 +
-                insets.bottom,
-            },
-          ]}
-          activeOpacity={0.85}
-          onPress={() =>
-            router.push('/buscador')
-          }
-        >
-          <Ionicons
-            name="add-circle-outline"
-            size={22}
-            color="#FFFFFF"
-          />
-
-          <Text
-            style={styles.addButtonText}
-          >
-            Añadir
-          </Text>
-        </TouchableOpacity>
-
-        {/* TAB BAR */}
-
-        <View
-          style={[
-            styles.tabBar,
-            {
-              paddingBottom:
-                12 +
-                insets.bottom,
-            },
-          ]}
-        >
-          {TAB_BAR_ITEMS.map(
-            (item) => {
-              const activo =
-                item.key ===
-                'terapia';
-
-              return (
+              {cuentasEnlazadas.map((cuenta) => (
                 <TouchableOpacity
-                  key={item.key}
-                  style={
-                    styles.tabItem
-                  }
-                  onPress={() =>
-                    router.replace(
-                      item.route
-                    )
-                  }
+                  key={cuenta.id}
+                  style={[styles.chip, cuentaSeleccionada === cuenta.id && styles.chipActive]}
+                  onPress={() => setCuentaSeleccionada(cuenta.id)}
                 >
                   <Ionicons
-                    name={item.icon}
-                    size={22}
-                    color={
-                      activo
-                        ? PRIMARY
-                        : '#6C757D'
-                    }
+                    name="eye-outline"
+                    size={14}
+                    color={cuentaSeleccionada === cuenta.id ? '#fff' : '#4a5359'}
+                    style={{ marginRight: 4 }}
                   />
-
-                  <Text
-                    style={[
-                      styles.tabLabel,
-                      activo &&
-                        styles.tabLabelActive,
-                    ]}
-                  >
-                    {item.label}
+                  <Text style={[styles.chipText, cuentaSeleccionada === cuenta.id && styles.chipTextActive]}>
+                    {cuenta.apodo}
                   </Text>
                 </TouchableOpacity>
-              );
-            }
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
+        {/* CONTENIDO */}
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={[styles.content, { paddingBottom: 110 + insets.bottom }]}
+          showsVerticalScrollIndicator={false}
+        >
+          <Text style={styles.sectionTitle}>
+            {cuentaSeleccionada === 'mía' ? 'Mis medicamentos' : 'Medicamentos en seguimiento'}
+          </Text>
+
+          <Text style={styles.subtitle}>
+            {cuentaSeleccionada === 'mía'
+              ? 'Acá podés consultar los medicamentos que tenés registrados en tu terapia.'
+              : 'Estás consultando la terapia de tu familiar o cuenta enlazada.'}
+          </Text>
+
+          {cargando ? (
+            <ActivityIndicator size="large" color={PRIMARY} style={{ marginTop: 40 }} />
+          ) : medicamentos.length === 0 ? (
+            <View style={styles.emptyCard}>
+              <View style={styles.emptyIcon}>
+                <Ionicons name="medkit-outline" size={30} color={PRIMARY} />
+              </View>
+              <Text style={styles.emptyTitle}>No hay medicamentos registrados</Text>
+              <Text style={styles.emptyText}>
+                {cuentaSeleccionada === 'mía'
+                  ? 'Agregá tu primer medicamento para verlo guardado en tu terapia.'
+                  : 'Esta persona aún no registró medicamentos.'}
+              </Text>
+            </View>
+          ) : (
+            medicamentos.map((med) => (
+              <View key={med.id} style={styles.medicamentoCard}>
+                <View style={styles.medicamentoHeader}>
+                  <View style={styles.medicamentoIcon}>
+                    <Text style={styles.iconText}>💊</Text>
+                  </View>
+
+                  <View style={styles.medicamentoHeaderText}>
+                    <Text style={styles.medicamentoLabel}>Medicamento</Text>
+                    <Text style={styles.medicamentoNombre}>{med.nombre || 'Sin nombre'}</Text>
+                  </View>
+
+                  {/* Solo se permite eliminar si son los medicamentos propios */}
+                  {cuentaSeleccionada === 'mía' && (
+                    <TouchableOpacity
+                      style={styles.deleteIconButton}
+                      onPress={() => confirmarEliminar(med)}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="trash-outline" size={20} color="#E53935" />
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                <View style={styles.separador} />
+
+                <InfoRow
+                  icon="repeat-outline"
+                  label="Cada cuánto se toma"
+                  value={med.frecuencia || 'No especificado'}
+                />
+                <InfoRow
+                  icon="time-outline"
+                  label="Hora"
+                  value={med.hora || 'No especificada'}
+                />
+                <InfoRow
+                  icon="medical-outline"
+                  label="Dosis"
+                  value={`${med.dosis || '1'} comprimido(s)`}
+                />
+                <InfoRow
+                  icon="flask-outline"
+                  label="Límite de dosis"
+                  value={`${med.limite_dosis || '30'} comprimido(s)`}
+                />
+                <InfoRow
+                  icon="calendar-outline"
+                  label="Fecha de inicio"
+                  value={formatearFecha(med.fecha_inicio)}
+                  last
+                />
+              </View>
+            ))
           )}
+        </ScrollView>
+
+        {/* BOTÓN AÑADIR (Solo en la cuenta propia) */}
+        {cuentaSeleccionada === 'mía' && (
+          <TouchableOpacity
+            style={[styles.addButton, { bottom: 72 + insets.bottom }]}
+            activeOpacity={0.85}
+            onPress={() => router.push('/buscador')}
+          >
+            <Ionicons name="add-circle-outline" size={22} color="#FFFFFF" />
+            <Text style={styles.addButtonText}>Añadir</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* TAB BAR */}
+        <View style={[styles.tabBar, { paddingBottom: 12 + insets.bottom }]}>
+          {TAB_BAR_ITEMS.map((item) => {
+            const activo = item.key === 'terapia';
+            return (
+              <TouchableOpacity
+                key={item.key}
+                style={styles.tabItem}
+                onPress={() => router.replace(item.route)}
+              >
+                <Ionicons name={item.icon} size={22} color={activo ? PRIMARY : '#6C757D'} />
+                <Text style={[styles.tabLabel, activo && styles.tabLabelActive]}>
+                  {item.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
+        {/* MODAL PARA ENLAZAR CUENTA */}
+        <Modal visible={modalEnlazarVisible} transparent animationType="fade">
+          <View style={styles.overlayModal}>
+            <View style={styles.modalCard}>
+              <Text style={styles.modalTitle}>Enlazar Cuenta</Text>
+              <Text style={styles.modalSubtext}>
+                Ingresá el código de la persona que querés supervisar:
+              </Text>
+
+              <TextInput
+                style={styles.modalInput}
+                placeholder="Ej: ABC1234"
+                placeholderTextColor="#999"
+                autoCapitalize="characters"
+                value={codigoIngresado}
+                onChangeText={setCodigoIngresado}
+              />
+
+              <View style={styles.modalButtonsRow}>
+                <TouchableOpacity
+                  style={styles.btnCancel}
+                  onPress={() => setModalEnlazarVisible(false)}
+                >
+                  <Text style={styles.btnCancelText}>Cancelar</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.btnConfirm}
+                  onPress={handleEnlazarCuenta}
+                  disabled={procesandoEnlace}
+                >
+                  {procesandoEnlace ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <Text style={styles.btnConfirmText}>Enlazar</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-
   safeArea: {
     flex: 1,
     backgroundColor: '#F8F9FA',
   },
-
   container: {
     flex: 1,
     backgroundColor: '#F8F9FA',
   },
-
   header: {
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 20,
@@ -570,29 +433,70 @@ const styles = StyleSheet.create({
     paddingBottom: 14,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E8EB',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
-
   headerTitle: {
     color: '#1A1D1E',
     fontSize: 26,
     fontWeight: '600',
   },
-
+  linkButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#EAF7EB',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  linkButtonText: {
+    color: PRIMARY,
+    fontWeight: '600',
+    fontSize: 13,
+  },
+  selectorContainer: {
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E8EB',
+  },
+  selectorScroll: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    gap: 8,
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 18,
+    backgroundColor: '#F1F3F5',
+  },
+  chipActive: {
+    backgroundColor: PRIMARY,
+  },
+  chipText: {
+    color: '#4A5359',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  chipTextActive: {
+    color: '#FFFFFF',
+  },
   scrollView: {
     flex: 1,
   },
-
   content: {
     paddingHorizontal: 20,
     paddingTop: 20,
   },
-
   sectionTitle: {
     color: '#1A1D1E',
     fontSize: 22,
     fontWeight: '700',
   },
-
   subtitle: {
     color: '#6C757D',
     fontSize: 14,
@@ -600,7 +504,6 @@ const styles = StyleSheet.create({
     marginTop: 6,
     marginBottom: 18,
   },
-
   medicamentoCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 18,
@@ -610,12 +513,10 @@ const styles = StyleSheet.create({
     borderColor: '#E5E8EB',
     elevation: 2,
   },
-
   medicamentoHeader: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-
   medicamentoIcon: {
     width: 52,
     height: 52,
@@ -625,27 +526,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 14,
   },
-
   iconText: {
     fontSize: 26,
   },
-
   medicamentoHeaderText: {
     flex: 1,
   },
-
   medicamentoLabel: {
     color: '#888888',
     fontSize: 13,
     marginBottom: 3,
   },
-
   medicamentoNombre: {
     color: '#1A1D1E',
     fontSize: 20,
     fontWeight: '700',
   },
-
   deleteIconButton: {
     width: 40,
     height: 40,
@@ -655,23 +551,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginLeft: 8,
   },
-
   separador: {
     height: 1,
     backgroundColor: '#E5E8EB',
     marginVertical: 18,
   },
-
   infoRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 16,
   },
-
   lastInfoRow: {
     marginBottom: 0,
   },
-
   infoIcon: {
     width: 40,
     height: 40,
@@ -681,23 +573,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 12,
   },
-
   infoTextContainer: {
     flex: 1,
   },
-
   infoLabel: {
     color: '#888888',
     fontSize: 13,
     marginBottom: 2,
   },
-
   infoValue: {
     color: '#1A1D1E',
     fontSize: 15,
     fontWeight: '600',
   },
-
   emptyCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 18,
@@ -706,7 +594,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E8EB',
   },
-
   emptyIcon: {
     width: 62,
     height: 62,
@@ -716,14 +603,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 14,
   },
-
   emptyTitle: {
     color: '#1A1D1E',
     fontSize: 17,
     fontWeight: '700',
     textAlign: 'center',
   },
-
   emptyText: {
     color: '#6C757D',
     fontSize: 14,
@@ -731,7 +616,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 6,
   },
-
   addButton: {
     position: 'absolute',
     right: 20,
@@ -744,13 +628,11 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     elevation: 4,
   },
-
   addButtonText: {
     color: '#FFFFFF',
     fontWeight: '700',
     fontSize: 15,
   },
-
   tabBar: {
     flexDirection: 'row',
     justifyContent: 'space-around',
@@ -761,21 +643,79 @@ const styles = StyleSheet.create({
     borderTopColor: '#E5E8EB',
     backgroundColor: '#FFFFFF',
   },
-
   tabItem: {
     flex: 1,
     alignItems: 'center',
     gap: 4,
   },
-
   tabLabel: {
     fontSize: 12,
     color: '#6C757D',
   },
-
   tabLabelActive: {
     color: PRIMARY,
     fontWeight: '600',
   },
-
+  overlayModal: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 320,
+    backgroundColor: '#FFF',
+    borderRadius: 18,
+    padding: 20,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1A1D1E',
+    marginBottom: 6,
+  },
+  modalSubtext: {
+    fontSize: 13,
+    color: '#6C757D',
+    marginBottom: 16,
+  },
+  modalInput: {
+    backgroundColor: '#F5F6F8',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 16,
+    fontWeight: '700',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    textAlign: 'center',
+    letterSpacing: 2,
+    marginBottom: 20,
+  },
+  modalButtonsRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 10,
+  },
+  btnCancel: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  btnCancelText: {
+    color: '#6C757D',
+    fontWeight: '600',
+  },
+  btnConfirm: {
+    backgroundColor: PRIMARY,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  btnConfirmText: {
+    color: '#FFF',
+    fontWeight: '700',
+  },
 });
