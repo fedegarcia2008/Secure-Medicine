@@ -1,4 +1,3 @@
-
 import React, { useCallback, useState } from 'react';
 import {
   View,
@@ -321,20 +320,34 @@ export default function Terapia() {
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Terapia</Text>
 
-          <TouchableOpacity
-            style={styles.linkButton}
-            onPress={() => setModalEnlazarVisible(true)}
-          >
-            <Ionicons
-              name="people-outline"
-              size={20}
-              color={PRIMARY}
-            />
+          <View style={styles.headerRight}>
+            <TouchableOpacity
+              style={styles.linkButton}
+              onPress={() => setModalEnlazarVisible(true)}
+            >
+              <Ionicons
+                name="people-outline"
+                size={20}
+                color={PRIMARY}
+              />
 
-            <Text style={styles.linkButtonText}>
-              Enlazar cuenta
-            </Text>
-          </TouchableOpacity>
+              <Text style={styles.linkButtonText}>
+                Enlazar cuenta
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.settingsButton}
+              onPress={() => router.push('../configuracion/ajustes')}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name="settings-outline"
+                size={22}
+                color="#4A5359"
+              />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {cuentasEnlazadas.length > 0 && (
@@ -682,6 +695,19 @@ const styles = StyleSheet.create({
     color: '#1A1D1E',
     fontSize: 26,
     fontWeight: '600',
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  settingsButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F1F3F5',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   linkButton: {
     flexDirection: 'row',
