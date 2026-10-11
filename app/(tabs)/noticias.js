@@ -1,5 +1,17 @@
-import React, { useCallback, useMemo, useState } from 'react';
-import {View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput, Modal,} from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  TextInput,
+  Modal,
+  Image,
+  ActivityIndicator,
+  RefreshControl,
+  Linking,
+} from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -8,6 +20,12 @@ import { useFocusEffect, useRouter } from 'expo-router';
 const PRIMARY = '#4caf50';
 const GUARDADAS_KEY = '@noticias_guardadas';
 
+// API de noticias (NewsData.io)
+const API_KEY = process.env.EXPO_PUBLIC_NEWSDATA_KEY;
+const API_URL = 'https://newsdata.io/api/1/latest';
+const CACHE_TTL = 15 * 60 * 1000; // 15 minutos
+const CACHE_PREFIX = '@news_cache_v2_'; // v2: descarta el caché de la versión anterior
+
 const TAB_BAR_ITEMS = [
   { key: 'hoy', label: 'Home', icon: 'list-outline', route: '/Home' },
   { key: 'progreso', label: 'Progreso', icon: 'stats-chart-outline', route: '/progreso' },
@@ -15,16 +33,70 @@ const TAB_BAR_ITEMS = [
   { key: 'terapia', label: 'Terapia', icon: 'medkit-outline', route: '/terapia' },
 ];
 
-const CATEGORIAS = ['Todas', 'Medicación', 'Hábitos', 'Bienestar', 'Guardadas'];
-
+const CATEGORIAS = ['Todas', 'Medicación', 'Enfermedades', 'Nutrición', 'Bienestar', 'Guardadas'];
 
 const COLORES_CATEGORIA = {
   Medicación: ['#EAF7EB', '#2E7D32'],
-  Hábitos: ['#FFF4E0', '#E08A00'],
+  Enfermedades: ['#FDECEC', '#C62828'],
+  Nutrición: ['#FFF4E0', '#E08A00'],
   Bienestar: ['#E8F1FD', '#1E6FD9'],
 };
 
+// Emoji que se usa cuando una noticia de la API no trae imagen
+const EMOJI_CATEGORIA = {
+  Medicación: '💊',
+  Enfermedades: '🩺',
+  Nutrición: '🥗',
+  Bienestar: '🧘',
+};
 
+// Categorías de versiones anteriores (para no perder noticias ya guardadas)
+const CATEGORIAS_VIEJAS = { Hábitos: 'Bienestar' };
+
+// ───────────────────── Filtros de la API ─────────────────────
+// Importante: el plan gratis limita el largo de la búsqueda (~100 caracteres),
+// así que estas consultas están pensadas para ser cortas.
+
+// Se agrega a todas las búsquedas para que el servidor descarte horóscopos
+const EXCLUIR = ' NOT (horóscopo OR zodiaco)';
+
+const QUERY_POR_CATEGORIA = {
+  Todas: `(salud OR médico OR medicamento OR enfermedad OR tratamiento)${EXCLUIR}`,
+  Medicación: `(medicamento OR fármaco OR tratamiento OR vacuna OR farmacia)${EXCLUIR}`,
+  Enfermedades: `(diabetes OR hipertensión OR cáncer OR gripe OR dengue)${EXCLUIR}`,
+  Nutrición: `(alimentación OR nutrición OR dieta OR vitaminas OR hidratación)${EXCLUIR}`,
+  Bienestar: `("salud mental" OR sueño OR estrés OR ejercicio OR bienestar)${EXCLUIR}`,
+};
+
+// ───────────────────── Filtros locales ─────────────────────
+// Segunda barrera: se aplica sobre lo que devuelve la API.
+// Podés agregar o quitar palabras de estas dos listas.
+
+// Si el título o el resumen coincide con esto, la noticia se descarta
+const TEMAS_BLOQUEADOS =
+  /hor[óo]scopo|zod[ií]aco|tarot|astrolog|numerolog|quiniela|loter[ií]a|f[úu]tbol|farándula|farandula|chimentos|show ?business/i;
+
+// La noticia tiene que mencionar al menos un tema de salud
+const TEMAS_DE_SALUD =
+  /salud|m[ée]dic|f[áa]rmac|farmacia|enfermedad|tratamiento|vacun|s[íi]ntoma|diabetes|hipertens|c[áa]ncer|nutri|aliment|dieta|vitamina|sue[ñn]o|estr[ée]s|ansiedad|ejercicio|bienestar|hospital|paciente|terapia|dolor|virus|gripe|dengue|infecci|obesidad|colesterol|presi[óo]n arterial|prevenci[óo]n|cl[íi]nic|cirug|diagn[óo]stic/i;
+
+// Para "Todas": se adivina la categoría de cada noticia según palabras clave
+function clasificar(texto) {
+  if (/medic|f[áa]rmac|farmacia|tratamiento|dosis|pastill|vacun|receta/i.test(texto)) {
+    return 'Medicación';
+  }
+  if (
+    /enfermedad|diabetes|hipertens|c[áa]ncer|gripe|dengue|virus|infecci|s[íi]ntoma|obesidad|colesterol|covid|brote|epidemia/i.test(
+      texto
+    )
+  ) {
+    return 'Enfermedades';
+  }
+  if (/aliment|nutri|dieta|vitamina|hidrat|comida/i.test(texto)) return 'Nutrición';
+  return 'Bienestar';
+}
+
+// Artículos propios: se muestran solo si la API falla y no hay nada en caché
 const NOTICIAS = [
   {
     id: '1',
@@ -44,7 +116,7 @@ const NOTICIAS = [
   },
   {
     id: '2',
-    categoria: 'Hábitos',
+    categoria: 'Medicación',
     emoji: '🧠',
     titulo: 'Cómo armar una rutina para no olvidarte de tus pastillas',
     resumen: 'Asociar la toma con algo que ya hacés todos los días puede marcar la diferencia.',
@@ -59,7 +131,7 @@ const NOTICIAS = [
   },
   {
     id: '3',
-    categoria: 'Bienestar',
+    categoria: 'Nutrición',
     emoji: '💧',
     titulo: 'Hidratación: pequeños hábitos para tomar más agua',
     resumen: 'Tomar agua durante el día es simple, pero a veces cuesta recordarlo.',
@@ -101,7 +173,7 @@ const NOTICIAS = [
   },
   {
     id: '6',
-    categoria: 'Hábitos',
+    categoria: 'Bienestar',
     emoji: '🚶',
     titulo: 'Caminar un poco cada día: por dónde empezar',
     resumen: 'No hace falta un gran esfuerzo: empezar de a poco es suficiente.',
@@ -129,7 +201,114 @@ const NOTICIAS = [
   },
 ];
 
+// ───────────────────── Utilidades de la API ─────────────────────
 
+function normalizar(a, categoria) {
+  const cat =
+    categoria === 'Todas' || categoria === 'Guardadas'
+      ? clasificar(`${a.title} ${a.description}`)
+      : categoria;
+  return {
+    id: String(a.article_id),
+    categoria: cat,
+    emoji: EMOJI_CATEGORIA[cat],
+    titulo: a.title,
+    resumen: a.description,
+    contenido: [a.description],
+    fuente: a.source_name || a.source_id || 'Fuente externa',
+    fechaISO: a.pubDate || null,
+    imagen: a.image_url || null,
+    link: a.link || null,
+  };
+}
+
+// Clave para detectar la misma noticia publicada por distintos medios
+const claveTitulo = (t) =>
+  String(t)
+    .toLowerCase()
+    .replace(/[^a-z0-9áéíóúñü]/g, '')
+    .slice(0, 60);
+
+// Filtra temas ajenos y repetidas, y devuelve las noticias listas para mostrar.
+// "existentes" son las que ya están en pantalla (para no repetirlas al cargar más).
+function procesar(json, categoria, existentes = []) {
+  const ids = new Set(existentes.map((n) => n.id));
+  const claves = new Set(existentes.map((n) => claveTitulo(n.titulo)));
+  const salida = [];
+
+  for (const a of json.results || []) {
+    if (!a.title || !a.description || a.duplicate) continue;
+
+    const texto = `${a.title} ${a.description}`;
+    if (TEMAS_BLOQUEADOS.test(texto)) continue;
+    if (!TEMAS_DE_SALUD.test(texto)) continue;
+
+    const id = String(a.article_id);
+    const clave = claveTitulo(a.title);
+    if (ids.has(id) || claves.has(clave)) continue;
+
+    ids.add(id);
+    claves.add(clave);
+    salida.push(normalizar(a, categoria));
+  }
+  return salida;
+}
+
+// Pide una página de noticias, con caché en AsyncStorage para ahorrar créditos
+async function pedirNoticias(categoria, page, forzar) {
+  const cacheKey = `${CACHE_PREFIX}${categoria}_${page || 'p1'}`;
+
+  if (!forzar) {
+    try {
+      const raw = await AsyncStorage.getItem(cacheKey);
+      if (raw) {
+        const { ts, data } = JSON.parse(raw);
+        if (Date.now() - ts < CACHE_TTL) return data;
+      }
+    } catch (e) {}
+  }
+
+  if (!API_KEY) throw new Error('Falta EXPO_PUBLIC_NEWSDATA_KEY en el .env');
+
+  const params = new URLSearchParams({
+    apikey: API_KEY,
+    category: 'health',
+    language: 'es',
+    qInMeta: QUERY_POR_CATEGORIA[categoria] || QUERY_POR_CATEGORIA.Todas,
+  });
+  if (page) params.set('page', page);
+
+  const res = await fetch(`${API_URL}?${params.toString()}`);
+  const data = await res.json();
+  if (data.status === 'error') {
+    throw new Error(data.results?.message || 'Error de la API de noticias');
+  }
+
+  AsyncStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), data })).catch(() => {});
+  return data;
+}
+
+// NewsData devuelve la fecha como "YYYY-MM-DD HH:mm:ss" en UTC
+function tiempoRelativo(fecha) {
+  if (!fecha) return '';
+  const d = new Date(String(fecha).replace(' ', 'T') + 'Z');
+  if (isNaN(d.getTime())) return '';
+  const min = Math.floor((Date.now() - d.getTime()) / 60000);
+  if (min < 1) return 'Ahora';
+  if (min < 60) return `Hace ${min} min`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `Hace ${h} h`;
+  const dias = Math.floor(h / 24);
+  return dias === 1 ? 'Hace 1 día' : `Hace ${dias} días`;
+}
+
+const textoFecha = (n) => (n.fechaISO ? tiempoRelativo(n.fechaISO) : n.fecha || '');
+
+// Artículos propios muestran "X min"; los de la API muestran la fuente
+const textoMeta = (n, largo = false) =>
+  n.lectura ? (largo ? `${n.lectura} min de lectura` : `${n.lectura} min`) : n.fuente;
+
+// ───────────────────────── Componentes ─────────────────────────
 
 function EtiquetaCategoria({ categoria }) {
   const [fondo, color] = COLORES_CATEGORIA[categoria] || ['#EEE', '#555'];
@@ -158,16 +337,22 @@ function NoticiaDestacada({ noticia, guardada, onPress, onToggleGuardada }) {
       </View>
 
       <Text style={styles.featuredEmoji}>{noticia.emoji}</Text>
-      <Text style={styles.featuredTitle}>{noticia.titulo}</Text>
+      <Text style={styles.featuredTitle} numberOfLines={4}>
+        {noticia.titulo}
+      </Text>
       <Text style={styles.featuredResumen} numberOfLines={2}>
         {noticia.resumen}
       </Text>
 
       <View style={styles.featuredMeta}>
         <Ionicons name="time-outline" size={14} color="#E8F5E9" />
-        <Text style={styles.featuredMetaText}>{noticia.lectura} min de lectura</Text>
+        <Text style={styles.featuredMetaText} numberOfLines={1}>
+          {textoMeta(noticia, true)}
+        </Text>
         <Text style={styles.featuredMetaDot}>•</Text>
-        <Text style={styles.featuredMetaText}>{noticia.fecha}</Text>
+        <Text style={styles.featuredMetaText} numberOfLines={1}>
+          {textoFecha(noticia)}
+        </Text>
       </View>
     </TouchableOpacity>
   );
@@ -178,7 +363,11 @@ function NoticiaCard({ noticia, guardada, onPress, onToggleGuardada }) {
   return (
     <TouchableOpacity activeOpacity={0.85} style={styles.card} onPress={onPress}>
       <View style={[styles.cardEmojiBox, { backgroundColor: fondo }]}>
-        <Text style={styles.cardEmoji}>{noticia.emoji}</Text>
+        {noticia.imagen ? (
+          <Image source={{ uri: noticia.imagen }} style={styles.cardThumb} resizeMode="cover" />
+        ) : (
+          <Text style={styles.cardEmoji}>{noticia.emoji}</Text>
+        )}
       </View>
 
       <View style={styles.cardBody}>
@@ -188,9 +377,13 @@ function NoticiaCard({ noticia, guardada, onPress, onToggleGuardada }) {
         </Text>
         <View style={styles.cardMeta}>
           <Ionicons name="time-outline" size={13} color="#8A949B" />
-          <Text style={styles.cardMetaText}>{noticia.lectura} min</Text>
+          <Text style={styles.cardMetaText} numberOfLines={1}>
+            {textoMeta(noticia)}
+          </Text>
           <Text style={styles.cardMetaDot}>•</Text>
-          <Text style={styles.cardMetaText}>{noticia.fecha}</Text>
+          <Text style={styles.cardMetaText} numberOfLines={1}>
+            {textoFecha(noticia)}
+          </Text>
         </View>
       </View>
 
@@ -205,10 +398,7 @@ function NoticiaCard({ noticia, guardada, onPress, onToggleGuardada }) {
   );
 }
 
-
-
-// PANTALLA
-
+// ───────────────────────── Pantalla ─────────────────────────
 
 export default function NoticiasScreen() {
   const router = useRouter();
@@ -216,16 +406,30 @@ export default function NoticiasScreen() {
 
   const [categoria, setCategoria] = useState('Todas');
   const [busqueda, setBusqueda] = useState('');
-  const [guardadas, setGuardadas] = useState([]);
+  const [guardadas, setGuardadas] = useState([]); // objetos completos
   const [abierta, setAbierta] = useState(null);
 
+  const [noticias, setNoticias] = useState([]);
+  const [nextPage, setNextPage] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const forzarRef = useRef(false);
+
+  // Cargar guardadas (convierte formatos viejos: ids sueltos y categoría "Hábitos")
   useFocusEffect(
     useCallback(() => {
       (async () => {
         try {
           const datos = await AsyncStorage.getItem(GUARDADAS_KEY);
           const lista = datos ? JSON.parse(datos) : [];
-          setGuardadas(Array.isArray(lista) ? lista : []);
+          const migradas = (Array.isArray(lista) ? lista : [])
+            .map((g) => (typeof g === 'string' ? NOTICIAS.find((n) => n.id === g) : g))
+            .filter((g) => g && typeof g === 'object')
+            .map((g) => ({ ...g, categoria: CATEGORIAS_VIEJAS[g.categoria] || g.categoria }));
+          setGuardadas(migradas);
         } catch (e) {
           console.log('Error cargando noticias guardadas:', e);
         }
@@ -233,10 +437,73 @@ export default function NoticiasScreen() {
     }, [])
   );
 
-  const toggleGuardada = async (id) => {
-    const nueva = guardadas.includes(id)
-      ? guardadas.filter((g) => g !== id)
-      : [...guardadas, id];
+  // Cargar noticias de la API al cambiar de categoría o al refrescar
+  useEffect(() => {
+    if (categoria === 'Guardadas') return;
+    let cancelado = false;
+    const forzar = forzarRef.current;
+    forzarRef.current = false;
+
+    if (!forzar) {
+      setNoticias([]);
+      setNextPage(null);
+    }
+
+    (async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const json = await pedirNoticias(categoria, null, forzar);
+        if (cancelado) return;
+        setNoticias(procesar(json, categoria));
+        setNextPage(json.nextPage || null);
+      } catch (e) {
+        if (!cancelado) {
+          console.log('Error cargando noticias:', e);
+          setError('No se pudieron cargar las noticias nuevas.');
+        }
+      } finally {
+        if (!cancelado) {
+          setLoading(false);
+          setRefreshing(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelado = true;
+    };
+  }, [categoria, refreshKey]);
+
+  const onRefresh = () => {
+    if (categoria === 'Guardadas') return;
+    forzarRef.current = true;
+    setRefreshing(true);
+    setRefreshKey((k) => k + 1);
+  };
+
+  const cargarMas = async () => {
+    if (!nextPage || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const json = await pedirNoticias(categoria, nextPage, false);
+      const nuevas = procesar(json, categoria, noticias);
+      setNoticias((prev) => [...prev, ...nuevas]);
+      setNextPage(json.nextPage || null);
+    } catch (e) {
+      console.log('Error cargando más noticias:', e);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
+  // Guardar / quitar (se guarda la noticia completa, porque las de la API cambian)
+  const idsGuardadas = useMemo(() => new Set(guardadas.map((g) => g.id)), [guardadas]);
+
+  const toggleGuardada = async (noticia) => {
+    const nueva = idsGuardadas.has(noticia.id)
+      ? guardadas.filter((g) => g.id !== noticia.id)
+      : [noticia, ...guardadas];
 
     setGuardadas(nueva);
 
@@ -247,27 +514,32 @@ export default function NoticiasScreen() {
     }
   };
 
+  const usandoRespaldo = categoria !== 'Guardadas' && !!error && noticias.length === 0;
+
   const filtradas = useMemo(() => {
     const texto = busqueda.trim().toLowerCase();
+    const base =
+      categoria === 'Guardadas' ? guardadas : usandoRespaldo ? NOTICIAS : noticias;
 
-    return NOTICIAS.filter((n) => {
-      if (categoria === 'Guardadas' && !guardadas.includes(n.id)) return false;
+    return base.filter((n) => {
       if (categoria !== 'Todas' && categoria !== 'Guardadas' && n.categoria !== categoria) {
         return false;
       }
       if (texto) {
         return (
           n.titulo.toLowerCase().includes(texto) ||
-          n.resumen.toLowerCase().includes(texto)
+          (n.resumen || '').toLowerCase().includes(texto)
         );
       }
       return true;
     });
-  }, [categoria, busqueda, guardadas]);
+  }, [categoria, busqueda, guardadas, noticias, usandoRespaldo]);
 
   const mostrarDestacada = !busqueda.trim() && categoria !== 'Guardadas' && filtradas.length > 0;
   const destacada = mostrarDestacada ? filtradas[0] : null;
   const resto = mostrarDestacada ? filtradas.slice(1) : filtradas;
+
+  const cargandoInicial = loading && categoria !== 'Guardadas' && noticias.length === 0;
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
@@ -327,14 +599,36 @@ export default function NoticiasScreen() {
           </ScrollView>
         </View>
 
-        
+        {/* LISTA */}
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={[styles.content, { paddingBottom: 30 + insets.bottom }]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={PRIMARY}
+              colors={[PRIMARY]}
+            />
+          }
         >
-          {filtradas.length === 0 ? (
+          {usandoRespaldo && (
+            <View style={styles.errorBox}>
+              <Ionicons name="cloud-offline-outline" size={18} color="#B26A00" />
+              <Text style={styles.errorText}>
+                {error} Mostrando artículos de SecureMedicine. Deslizá hacia abajo para reintentar.
+              </Text>
+            </View>
+          )}
+
+          {cargandoInicial ? (
+            <View style={styles.emptyCard}>
+              <ActivityIndicator color={PRIMARY} size="large" />
+              <Text style={[styles.emptyText, { marginTop: 14 }]}>Buscando noticias…</Text>
+            </View>
+          ) : filtradas.length === 0 ? (
             <View style={styles.emptyCard}>
               <View style={styles.emptyIcon}>
                 <Ionicons
@@ -351,15 +645,29 @@ export default function NoticiasScreen() {
                   ? 'Tocá el ícono del marcador en un artículo para guardarlo y leerlo después.'
                   : 'Probá con otra palabra o elegí otra categoría.'}
               </Text>
+              {categoria !== 'Guardadas' && !busqueda && nextPage && (
+                <TouchableOpacity
+                  style={[styles.loadMore, { alignSelf: 'stretch', marginTop: 16 }]}
+                  onPress={cargarMas}
+                  disabled={loadingMore}
+                  activeOpacity={0.8}
+                >
+                  {loadingMore ? (
+                    <ActivityIndicator color={PRIMARY} />
+                  ) : (
+                    <Text style={styles.loadMoreText}>Buscar más noticias</Text>
+                  )}
+                </TouchableOpacity>
+              )}
             </View>
           ) : (
             <>
               {destacada && (
                 <NoticiaDestacada
                   noticia={destacada}
-                  guardada={guardadas.includes(destacada.id)}
+                  guardada={idsGuardadas.has(destacada.id)}
                   onPress={() => setAbierta(destacada)}
-                  onToggleGuardada={() => toggleGuardada(destacada.id)}
+                  onToggleGuardada={() => toggleGuardada(destacada)}
                 />
               )}
 
@@ -373,14 +681,29 @@ export default function NoticiasScreen() {
                 <NoticiaCard
                   key={n.id}
                   noticia={n}
-                  guardada={guardadas.includes(n.id)}
+                  guardada={idsGuardadas.has(n.id)}
                   onPress={() => setAbierta(n)}
-                  onToggleGuardada={() => toggleGuardada(n.id)}
+                  onToggleGuardada={() => toggleGuardada(n)}
                 />
               ))}
 
+              {categoria !== 'Guardadas' && !usandoRespaldo && nextPage && (
+                <TouchableOpacity
+                  style={styles.loadMore}
+                  onPress={cargarMas}
+                  disabled={loadingMore}
+                  activeOpacity={0.8}
+                >
+                  {loadingMore ? (
+                    <ActivityIndicator color={PRIMARY} />
+                  ) : (
+                    <Text style={styles.loadMoreText}>Ver más noticias</Text>
+                  )}
+                </TouchableOpacity>
+              )}
+
               <Text style={styles.disclaimer}>
-              Noticias Importantes
+                Contenido informativo. No reemplaza la consulta con un profesional de la salud.
               </Text>
             </>
           )}
@@ -406,7 +729,7 @@ export default function NoticiasScreen() {
         </View>
       </View>
 
-      
+      {/* DETALLE */}
       <Modal
         visible={!!abierta}
         animationType="slide"
@@ -425,13 +748,13 @@ export default function NoticiasScreen() {
 
               <TouchableOpacity
                 style={styles.detailIconButton}
-                onPress={() => toggleGuardada(abierta.id)}
+                onPress={() => toggleGuardada(abierta)}
                 hitSlop={10}
               >
                 <Ionicons
-                  name={guardadas.includes(abierta.id) ? 'bookmark' : 'bookmark-outline'}
+                  name={idsGuardadas.has(abierta.id) ? 'bookmark' : 'bookmark-outline'}
                   size={22}
-                  color={guardadas.includes(abierta.id) ? PRIMARY : '#333'}
+                  color={idsGuardadas.has(abierta.id) ? PRIMARY : '#333'}
                 />
               </TouchableOpacity>
             </View>
@@ -446,7 +769,15 @@ export default function NoticiasScreen() {
                   { backgroundColor: (COLORES_CATEGORIA[abierta.categoria] || ['#EEE'])[0] },
                 ]}
               >
-                <Text style={styles.detailEmoji}>{abierta.emoji}</Text>
+                {abierta.imagen ? (
+                  <Image
+                    source={{ uri: abierta.imagen }}
+                    style={styles.detailHeroImage}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <Text style={styles.detailEmoji}>{abierta.emoji}</Text>
+                )}
               </View>
 
               <EtiquetaCategoria categoria={abierta.categoria} />
@@ -455,9 +786,13 @@ export default function NoticiasScreen() {
 
               <View style={styles.cardMeta}>
                 <Ionicons name="time-outline" size={14} color="#8A949B" />
-                <Text style={styles.cardMetaText}>{abierta.lectura} min de lectura</Text>
+                <Text style={styles.cardMetaText} numberOfLines={1}>
+                  {textoMeta(abierta, true)}
+                </Text>
                 <Text style={styles.cardMetaDot}>•</Text>
-                <Text style={styles.cardMetaText}>{abierta.fecha}</Text>
+                <Text style={styles.cardMetaText} numberOfLines={1}>
+                  {textoFecha(abierta)}
+                </Text>
               </View>
 
               <View style={styles.detailDivider} />
@@ -467,6 +802,17 @@ export default function NoticiasScreen() {
                   {parrafo}
                 </Text>
               ))}
+
+              {abierta.link ? (
+                <TouchableOpacity
+                  style={styles.detailButton}
+                  onPress={() => Linking.openURL(abierta.link).catch(() => {})}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.detailButtonText}>Leer nota completa</Text>
+                  <Ionicons name="open-outline" size={18} color="#FFFFFF" />
+                </TouchableOpacity>
+              ) : null}
 
               <View style={styles.detailNote}>
                 <Ionicons name="information-circle-outline" size={20} color={PRIMARY} />
@@ -483,15 +829,12 @@ export default function NoticiasScreen() {
   );
 }
 
-
-// ESTILOS
-
+// ───────────────────────── Estilos ─────────────────────────
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#F8F9FA' },
   container: { flex: 1, backgroundColor: '#F8F9FA' },
 
- 
   header: {
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 20,
@@ -512,7 +855,6 @@ const styles = StyleSheet.create({
   },
   searchInput: { flex: 1, fontSize: 15, color: '#1A1D1E', paddingVertical: 0 },
 
-  
   chipsWrapper: {
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
@@ -542,7 +884,19 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
 
- 
+  // Aviso cuando falla la API
+  errorBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    backgroundColor: '#FFF4E0',
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 16,
+  },
+  errorText: { flex: 1, color: '#8A5600', fontSize: 13, lineHeight: 18 },
+
+  // Destacada
   featured: {
     backgroundColor: PRIMARY,
     borderRadius: 22,
@@ -579,10 +933,10 @@ const styles = StyleSheet.create({
   },
   featuredResumen: { color: '#E8F5E9', fontSize: 14, lineHeight: 20, marginTop: 8 },
   featuredMeta: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 14 },
-  featuredMetaText: { color: '#E8F5E9', fontSize: 13 },
+  featuredMetaText: { color: '#E8F5E9', fontSize: 13, flexShrink: 1 },
   featuredMetaDot: { color: '#E8F5E9', fontSize: 13 },
 
-  
+  // Tarjetas
   card: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -601,8 +955,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 14,
+    overflow: 'hidden',
   },
   cardEmoji: { fontSize: 30 },
+  cardThumb: { width: 64, height: 64 },
   cardBody: { flex: 1 },
   cardTitle: {
     color: '#1A1D1E',
@@ -612,7 +968,7 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   cardMeta: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 6 },
-  cardMetaText: { color: '#8A949B', fontSize: 12 },
+  cardMetaText: { color: '#8A949B', fontSize: 12, flexShrink: 1 },
   cardMetaDot: { color: '#B0B7BC', fontSize: 12 },
   cardBookmark: { paddingLeft: 10, alignSelf: 'flex-start', paddingTop: 2 },
 
@@ -624,12 +980,24 @@ const styles = StyleSheet.create({
   },
   tagText: { fontSize: 11, fontWeight: '700' },
 
+  loadMore: {
+    height: 48,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: PRIMARY,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 6,
+  },
+  loadMoreText: { color: PRIMARY, fontSize: 15, fontWeight: '700' },
+
   disclaimer: {
     color: '#8A949B',
     fontSize: 12,
     lineHeight: 17,
     textAlign: 'center',
-    marginTop: 12,
+    marginTop: 16,
     paddingHorizontal: 10,
   },
 
@@ -684,7 +1052,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 18,
+    overflow: 'hidden',
   },
+  detailHeroImage: { width: '100%', height: '100%' },
   detailEmoji: { fontSize: 72 },
   detailTitle: {
     color: '#1A1D1E',
@@ -695,6 +1065,17 @@ const styles = StyleSheet.create({
   },
   detailDivider: { height: 1, backgroundColor: '#E5E8EB', marginVertical: 18 },
   detailParagraph: { color: '#33393D', fontSize: 16, lineHeight: 25, marginBottom: 16 },
+  detailButton: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: PRIMARY,
+    borderRadius: 14,
+    height: 50,
+    marginBottom: 16,
+  },
+  detailButtonText: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
   detailNote: {
     flexDirection: 'row',
     gap: 10,
