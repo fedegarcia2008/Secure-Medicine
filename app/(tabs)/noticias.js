@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
-  Text,
   TouchableOpacity,
   StyleSheet,
   ScrollView,
@@ -16,8 +15,9 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter } from 'expo-router';
+import Text from '../../components/Texto';
+import { useColores, useEstilos } from '../../context/ColorContext';
 
-const PRIMARY = '#4caf50';
 const GUARDADAS_KEY = '@noticias_guardadas';
 
 // API de noticias (NewsData.io)
@@ -27,7 +27,7 @@ const CACHE_TTL = 15 * 60 * 1000; // 15 minutos
 const CACHE_PREFIX = '@news_cache_v2_'; // v2: descarta el caché de la versión anterior
 
 const TAB_BAR_ITEMS = [
-  { key: 'hoy', label: 'Home', icon: 'list-outline', route: '/Home' },
+  { key: 'hoy', label: 'Home', icon: 'list-outline', route: '/home' },
   { key: 'progreso', label: 'Progreso', icon: 'stats-chart-outline', route: '/progreso' },
   { key: 'noticias', label: 'Noticias', icon: 'newspaper-outline', route: '/noticias' },
   { key: 'terapia', label: 'Terapia', icon: 'medkit-outline', route: '/terapia' },
@@ -35,6 +35,7 @@ const TAB_BAR_ITEMS = [
 
 const CATEGORIAS = ['Todas', 'Medicación', 'Enfermedades', 'Nutrición', 'Bienestar', 'Guardadas'];
 
+// Colores propios de cada categoría (etiquetas). Se mantienen fijos a propósito.
 const COLORES_CATEGORIA = {
   Medicación: ['#EAF7EB', '#2E7D32'],
   Enfermedades: ['#FDECEC', '#C62828'],
@@ -311,6 +312,7 @@ const textoMeta = (n, largo = false) =>
 // ───────────────────────── Componentes ─────────────────────────
 
 function EtiquetaCategoria({ categoria }) {
+  const styles = useEstilos(crearEstilos);
   const [fondo, color] = COLORES_CATEGORIA[categoria] || ['#EEE', '#555'];
   return (
     <View style={[styles.tag, { backgroundColor: fondo }]}>
@@ -320,11 +322,13 @@ function EtiquetaCategoria({ categoria }) {
 }
 
 function NoticiaDestacada({ noticia, guardada, onPress, onToggleGuardada }) {
+  const { primario } = useColores();
+  const styles = useEstilos(crearEstilos);
   return (
     <TouchableOpacity activeOpacity={0.9} style={styles.featured} onPress={onPress}>
       <View style={styles.featuredTop}>
         <View style={styles.featuredBadge}>
-          <Ionicons name="sparkles" size={12} color={PRIMARY} />
+          <Ionicons name="sparkles" size={12} color={primario} />
           <Text style={styles.featuredBadgeText}>Destacada</Text>
         </View>
         <TouchableOpacity onPress={onToggleGuardada} hitSlop={10}>
@@ -359,6 +363,8 @@ function NoticiaDestacada({ noticia, guardada, onPress, onToggleGuardada }) {
 }
 
 function NoticiaCard({ noticia, guardada, onPress, onToggleGuardada }) {
+  const { primario, textoSuave } = useColores();
+  const styles = useEstilos(crearEstilos);
   const [fondo] = COLORES_CATEGORIA[noticia.categoria] || ['#EEE'];
   return (
     <TouchableOpacity activeOpacity={0.85} style={styles.card} onPress={onPress}>
@@ -376,7 +382,7 @@ function NoticiaCard({ noticia, guardada, onPress, onToggleGuardada }) {
           {noticia.titulo}
         </Text>
         <View style={styles.cardMeta}>
-          <Ionicons name="time-outline" size={13} color="#8A949B" />
+          <Ionicons name="time-outline" size={13} color={textoSuave} />
           <Text style={styles.cardMetaText} numberOfLines={1}>
             {textoMeta(noticia)}
           </Text>
@@ -391,7 +397,7 @@ function NoticiaCard({ noticia, guardada, onPress, onToggleGuardada }) {
         <Ionicons
           name={guardada ? 'bookmark' : 'bookmark-outline'}
           size={20}
-          color={guardada ? PRIMARY : '#B0B7BC'}
+          color={guardada ? primario : textoSuave}
         />
       </TouchableOpacity>
     </TouchableOpacity>
@@ -401,6 +407,8 @@ function NoticiaCard({ noticia, guardada, onPress, onToggleGuardada }) {
 // ───────────────────────── Pantalla ─────────────────────────
 
 export default function NoticiasScreen() {
+  const { primario, texto, textoSuave } = useColores();
+  const styles = useEstilos(crearEstilos);
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -517,7 +525,7 @@ export default function NoticiasScreen() {
   const usandoRespaldo = categoria !== 'Guardadas' && !!error && noticias.length === 0;
 
   const filtradas = useMemo(() => {
-    const texto = busqueda.trim().toLowerCase();
+    const textoBusqueda = busqueda.trim().toLowerCase();
     const base =
       categoria === 'Guardadas' ? guardadas : usandoRespaldo ? NOTICIAS : noticias;
 
@@ -525,10 +533,10 @@ export default function NoticiasScreen() {
       if (categoria !== 'Todas' && categoria !== 'Guardadas' && n.categoria !== categoria) {
         return false;
       }
-      if (texto) {
+      if (textoBusqueda) {
         return (
-          n.titulo.toLowerCase().includes(texto) ||
-          (n.resumen || '').toLowerCase().includes(texto)
+          n.titulo.toLowerCase().includes(textoBusqueda) ||
+          (n.resumen || '').toLowerCase().includes(textoBusqueda)
         );
       }
       return true;
@@ -551,18 +559,18 @@ export default function NoticiasScreen() {
 
           {/* BUSCADOR */}
           <View style={styles.searchBox}>
-            <Ionicons name="search-outline" size={18} color="#8A949B" />
+            <Ionicons name="search-outline" size={18} color={textoSuave} />
             <TextInput
               style={styles.searchInput}
               placeholder="Buscar artículos"
-              placeholderTextColor="#A0A8AE"
+              placeholderTextColor={textoSuave}
               value={busqueda}
               onChangeText={setBusqueda}
               returnKeyType="search"
             />
             {busqueda.length > 0 && (
               <TouchableOpacity onPress={() => setBusqueda('')} hitSlop={10}>
-                <Ionicons name="close-circle" size={18} color="#B0B7BC" />
+                <Ionicons name="close-circle" size={18} color={textoSuave} />
               </TouchableOpacity>
             )}
           </View>
@@ -588,7 +596,7 @@ export default function NoticiasScreen() {
                     <Ionicons
                       name="bookmark"
                       size={13}
-                      color={activa ? '#FFFFFF' : PRIMARY}
+                      color={activa ? '#FFFFFF' : primario}
                       style={{ marginRight: 4 }}
                     />
                   )}
@@ -609,8 +617,8 @@ export default function NoticiasScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              tintColor={PRIMARY}
-              colors={[PRIMARY]}
+              tintColor={primario}
+              colors={[primario]}
             />
           }
         >
@@ -625,7 +633,7 @@ export default function NoticiasScreen() {
 
           {cargandoInicial ? (
             <View style={styles.emptyCard}>
-              <ActivityIndicator color={PRIMARY} size="large" />
+              <ActivityIndicator color={primario} size="large" />
               <Text style={[styles.emptyText, { marginTop: 14 }]}>Buscando noticias…</Text>
             </View>
           ) : filtradas.length === 0 ? (
@@ -634,7 +642,7 @@ export default function NoticiasScreen() {
                 <Ionicons
                   name={categoria === 'Guardadas' ? 'bookmark-outline' : 'search-outline'}
                   size={30}
-                  color={PRIMARY}
+                  color={primario}
                 />
               </View>
               <Text style={styles.emptyTitle}>
@@ -653,7 +661,7 @@ export default function NoticiasScreen() {
                   activeOpacity={0.8}
                 >
                   {loadingMore ? (
-                    <ActivityIndicator color={PRIMARY} />
+                    <ActivityIndicator color={primario} />
                   ) : (
                     <Text style={styles.loadMoreText}>Buscar más noticias</Text>
                   )}
@@ -695,7 +703,7 @@ export default function NoticiasScreen() {
                   activeOpacity={0.8}
                 >
                   {loadingMore ? (
-                    <ActivityIndicator color={PRIMARY} />
+                    <ActivityIndicator color={primario} />
                   ) : (
                     <Text style={styles.loadMoreText}>Ver más noticias</Text>
                   )}
@@ -719,7 +727,7 @@ export default function NoticiasScreen() {
                 style={styles.tabItem}
                 onPress={() => router.replace(item.route)}
               >
-                <Ionicons name={item.icon} size={22} color={activo ? PRIMARY : '#6C757D'} />
+                <Ionicons name={item.icon} size={22} color={activo ? primario : textoSuave} />
                 <Text style={[styles.tabLabel, activo && styles.tabLabelActive]}>
                   {item.label}
                 </Text>
@@ -743,7 +751,7 @@ export default function NoticiasScreen() {
                 onPress={() => setAbierta(null)}
                 hitSlop={10}
               >
-                <Ionicons name="arrow-back" size={22} color="#333" />
+                <Ionicons name="arrow-back" size={22} color={texto} />
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -754,7 +762,7 @@ export default function NoticiasScreen() {
                 <Ionicons
                   name={idsGuardadas.has(abierta.id) ? 'bookmark' : 'bookmark-outline'}
                   size={22}
-                  color={idsGuardadas.has(abierta.id) ? PRIMARY : '#333'}
+                  color={idsGuardadas.has(abierta.id) ? primario : texto}
                 />
               </TouchableOpacity>
             </View>
@@ -785,7 +793,7 @@ export default function NoticiasScreen() {
               <Text style={styles.detailTitle}>{abierta.titulo}</Text>
 
               <View style={styles.cardMeta}>
-                <Ionicons name="time-outline" size={14} color="#8A949B" />
+                <Ionicons name="time-outline" size={14} color={textoSuave} />
                 <Text style={styles.cardMetaText} numberOfLines={1}>
                   {textoMeta(abierta, true)}
                 </Text>
@@ -815,7 +823,7 @@ export default function NoticiasScreen() {
               ) : null}
 
               <View style={styles.detailNote}>
-                <Ionicons name="information-circle-outline" size={20} color={PRIMARY} />
+                <Ionicons name="information-circle-outline" size={20} color={primario} />
                 <Text style={styles.detailNoteText}>
                   Ante cualquier duda sobre tu salud o tu tratamiento, consultá con tu médico o
                   farmacéutico.
@@ -829,275 +837,284 @@ export default function NoticiasScreen() {
   );
 }
 
-// ───────────────────────── Estilos ─────────────────────────
+const crearEstilos = ({
+  primario,
+  primarioSuave,
+  fondo,
+  tarjeta,
+  texto,
+  textoMedio,
+  textoSuave,
+  borde,
+  fondoSecundario,
+}) =>
+  StyleSheet.create({
+    safeArea: { flex: 1, backgroundColor: fondo },
+    container: { flex: 1, backgroundColor: fondo },
 
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F8F9FA' },
-  container: { flex: 1, backgroundColor: '#F8F9FA' },
+    header: {
+      backgroundColor: tarjeta,
+      paddingHorizontal: 20,
+      paddingTop: 16,
+      paddingBottom: 14,
+    },
+    headerTitle: { color: texto, fontSize: 26, fontWeight: '600' },
+    headerSubtitle: { color: textoSuave, fontSize: 14, marginTop: 4, marginBottom: 14 },
 
-  header: {
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 14,
-  },
-  headerTitle: { color: '#1A1D1E', fontSize: 26, fontWeight: '600' },
-  headerSubtitle: { color: '#6C757D', fontSize: 14, marginTop: 4, marginBottom: 14 },
+    searchBox: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: fondoSecundario,
+      borderRadius: 14,
+      paddingHorizontal: 14,
+      height: 46,
+      gap: 8,
+    },
+    searchInput: { flex: 1, fontSize: 15, color: texto, paddingVertical: 0 },
 
-  searchBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F1F3F5',
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    height: 46,
-    gap: 8,
-  },
-  searchInput: { flex: 1, fontSize: 15, color: '#1A1D1E', paddingVertical: 0 },
+    chipsWrapper: {
+      backgroundColor: tarjeta,
+      borderBottomWidth: 1,
+      borderBottomColor: borde,
+    },
+    chips: { paddingHorizontal: 20, paddingBottom: 14, gap: 8 },
+    chip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      borderRadius: 20,
+      backgroundColor: fondoSecundario,
+    },
+    chipActive: { backgroundColor: primario },
+    chipText: { color: textoMedio, fontSize: 14, fontWeight: '600' },
+    chipTextActive: { color: '#FFFFFF' },
 
-  chipsWrapper: {
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E8EB',
-  },
-  chips: { paddingHorizontal: 20, paddingBottom: 14, gap: 8 },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#F1F3F5',
-  },
-  chipActive: { backgroundColor: PRIMARY },
-  chipText: { color: '#4A5359', fontSize: 14, fontWeight: '600' },
-  chipTextActive: { color: '#FFFFFF' },
+    scrollView: { flex: 1 },
+    content: { paddingHorizontal: 20, paddingTop: 20 },
 
-  scrollView: { flex: 1 },
-  content: { paddingHorizontal: 20, paddingTop: 20 },
+    sectionTitle: {
+      color: texto,
+      fontSize: 18,
+      fontWeight: '700',
+      marginTop: 8,
+      marginBottom: 14,
+    },
 
-  sectionTitle: {
-    color: '#1A1D1E',
-    fontSize: 18,
-    fontWeight: '700',
-    marginTop: 8,
-    marginBottom: 14,
-  },
+    // Aviso cuando falla la API
+    errorBox: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 8,
+      backgroundColor: '#FFF4E0',
+      borderRadius: 14,
+      padding: 12,
+      marginBottom: 16,
+    },
+    errorText: { flex: 1, color: '#8A5600', fontSize: 13, lineHeight: 18 },
 
-  // Aviso cuando falla la API
-  errorBox: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
-    backgroundColor: '#FFF4E0',
-    borderRadius: 14,
-    padding: 12,
-    marginBottom: 16,
-  },
-  errorText: { flex: 1, color: '#8A5600', fontSize: 13, lineHeight: 18 },
+    // Destacada
+    featured: {
+      backgroundColor: primario,
+      borderRadius: 22,
+      padding: 20,
+      marginBottom: 18,
+      elevation: 4,
+      shadowColor: primario,
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.25,
+      shadowRadius: 12,
+    },
+    featuredTop: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    featuredBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      backgroundColor: '#FFFFFF',
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 12,
+    },
+    featuredBadgeText: { color: primario, fontSize: 12, fontWeight: '700' },
+    featuredEmoji: { fontSize: 44, marginTop: 14 },
+    featuredTitle: {
+      color: '#FFFFFF',
+      fontSize: 21,
+      fontWeight: '700',
+      lineHeight: 27,
+      marginTop: 10,
+    },
+    featuredResumen: { color: '#E8F5E9', fontSize: 14, lineHeight: 20, marginTop: 8 },
+    featuredMeta: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 14 },
+    featuredMetaText: { color: '#E8F5E9', fontSize: 13, flexShrink: 1 },
+    featuredMetaDot: { color: '#E8F5E9', fontSize: 13 },
 
-  // Destacada
-  featured: {
-    backgroundColor: PRIMARY,
-    borderRadius: 22,
-    padding: 20,
-    marginBottom: 18,
-    elevation: 4,
-    shadowColor: PRIMARY,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-  },
-  featuredTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  featuredBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  featuredBadgeText: { color: PRIMARY, fontSize: 12, fontWeight: '700' },
-  featuredEmoji: { fontSize: 44, marginTop: 14 },
-  featuredTitle: {
-    color: '#FFFFFF',
-    fontSize: 21,
-    fontWeight: '700',
-    lineHeight: 27,
-    marginTop: 10,
-  },
-  featuredResumen: { color: '#E8F5E9', fontSize: 14, lineHeight: 20, marginTop: 8 },
-  featuredMeta: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 14 },
-  featuredMetaText: { color: '#E8F5E9', fontSize: 13, flexShrink: 1 },
-  featuredMetaDot: { color: '#E8F5E9', fontSize: 13 },
+    // Tarjetas
+    card: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: tarjeta,
+      borderRadius: 18,
+      padding: 14,
+      marginBottom: 12,
+      borderWidth: 1,
+      borderColor: borde,
+      elevation: 2,
+    },
+    cardEmojiBox: {
+      width: 64,
+      height: 64,
+      borderRadius: 16,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: 14,
+      overflow: 'hidden',
+    },
+    cardEmoji: { fontSize: 30 },
+    cardThumb: { width: 64, height: 64 },
+    cardBody: { flex: 1 },
+    cardTitle: {
+      color: texto,
+      fontSize: 15,
+      fontWeight: '700',
+      lineHeight: 20,
+      marginTop: 6,
+    },
+    cardMeta: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 6 },
+    cardMetaText: { color: textoSuave, fontSize: 12, flexShrink: 1 },
+    cardMetaDot: { color: textoSuave, fontSize: 12 },
+    cardBookmark: { paddingLeft: 10, alignSelf: 'flex-start', paddingTop: 2 },
 
-  // Tarjetas
-  card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    padding: 14,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#E5E8EB',
-    elevation: 1,
-  },
-  cardEmojiBox: {
-    width: 64,
-    height: 64,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 14,
-    overflow: 'hidden',
-  },
-  cardEmoji: { fontSize: 30 },
-  cardThumb: { width: 64, height: 64 },
-  cardBody: { flex: 1 },
-  cardTitle: {
-    color: '#1A1D1E',
-    fontSize: 15,
-    fontWeight: '700',
-    lineHeight: 20,
-    marginTop: 6,
-  },
-  cardMeta: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 6 },
-  cardMetaText: { color: '#8A949B', fontSize: 12, flexShrink: 1 },
-  cardMetaDot: { color: '#B0B7BC', fontSize: 12 },
-  cardBookmark: { paddingLeft: 10, alignSelf: 'flex-start', paddingTop: 2 },
+    tag: {
+      alignSelf: 'flex-start',
+      paddingHorizontal: 10,
+      paddingVertical: 3,
+      borderRadius: 10,
+    },
+    tagText: { fontSize: 11, fontWeight: '700' },
 
-  tag: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: 10,
-  },
-  tagText: { fontSize: 11, fontWeight: '700' },
+    loadMore: {
+      height: 48,
+      borderRadius: 14,
+      borderWidth: 1.5,
+      borderColor: primario,
+      backgroundColor: tarjeta,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginTop: 6,
+    },
+    loadMoreText: { color: primario, fontSize: 15, fontWeight: '700' },
 
-  loadMore: {
-    height: 48,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: PRIMARY,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 6,
-  },
-  loadMoreText: { color: PRIMARY, fontSize: 15, fontWeight: '700' },
+    disclaimer: {
+      color: textoSuave,
+      fontSize: 12,
+      lineHeight: 17,
+      textAlign: 'center',
+      marginTop: 16,
+      paddingHorizontal: 10,
+    },
 
-  disclaimer: {
-    color: '#8A949B',
-    fontSize: 12,
-    lineHeight: 17,
-    textAlign: 'center',
-    marginTop: 16,
-    paddingHorizontal: 10,
-  },
+    // Estado vacío
+    emptyCard: {
+      backgroundColor: tarjeta,
+      borderRadius: 18,
+      padding: 28,
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: borde,
+    },
+    emptyIcon: {
+      width: 62,
+      height: 62,
+      borderRadius: 31,
+      backgroundColor: primarioSuave,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 14,
+    },
+    emptyTitle: { color: texto, fontSize: 17, fontWeight: '700', textAlign: 'center' },
+    emptyText: {
+      color: textoSuave,
+      fontSize: 14,
+      lineHeight: 20,
+      textAlign: 'center',
+      marginTop: 6,
+    },
 
-  // Estado vacío
-  emptyCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    padding: 28,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E5E8EB',
-  },
-  emptyIcon: {
-    width: 62,
-    height: 62,
-    borderRadius: 31,
-    backgroundColor: '#EAF7EB',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 14,
-  },
-  emptyTitle: { color: '#1A1D1E', fontSize: 17, fontWeight: '700', textAlign: 'center' },
-  emptyText: {
-    color: '#6C757D',
-    fontSize: 14,
-    lineHeight: 20,
-    textAlign: 'center',
-    marginTop: 6,
-  },
+    // Detalle
+    detailSafe: { flex: 1, backgroundColor: tarjeta },
+    detailHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+    },
+    detailIconButton: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: fondoSecundario,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    detailContent: { paddingHorizontal: 20, paddingTop: 6 },
+    detailHero: {
+      height: 160,
+      borderRadius: 22,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 18,
+      overflow: 'hidden',
+    },
+    detailHeroImage: { width: '100%', height: '100%' },
+    detailEmoji: { fontSize: 72 },
+    detailTitle: {
+      color: texto,
+      fontSize: 24,
+      fontWeight: '700',
+      lineHeight: 31,
+      marginTop: 12,
+    },
+    detailDivider: { height: 1, backgroundColor: borde, marginVertical: 18 },
+    detailParagraph: { color: texto, fontSize: 16, lineHeight: 25, marginBottom: 16 },
+    detailButton: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: 8,
+      backgroundColor: primario,
+      borderRadius: 14,
+      height: 50,
+      marginBottom: 16,
+    },
+    detailButtonText: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
+    detailNote: {
+      flexDirection: 'row',
+      gap: 10,
+      backgroundColor: primarioSuave,
+      borderRadius: 14,
+      padding: 14,
+      marginTop: 6,
+    },
+    detailNoteText: { flex: 1, color: texto, fontSize: 13, lineHeight: 19 },
 
-  // Detalle
-  detailSafe: { flex: 1, backgroundColor: '#FFFFFF' },
-  detailHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-  },
-  detailIconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F0F0F0',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  detailContent: { paddingHorizontal: 20, paddingTop: 6 },
-  detailHero: {
-    height: 160,
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 18,
-    overflow: 'hidden',
-  },
-  detailHeroImage: { width: '100%', height: '100%' },
-  detailEmoji: { fontSize: 72 },
-  detailTitle: {
-    color: '#1A1D1E',
-    fontSize: 24,
-    fontWeight: '700',
-    lineHeight: 31,
-    marginTop: 12,
-  },
-  detailDivider: { height: 1, backgroundColor: '#E5E8EB', marginVertical: 18 },
-  detailParagraph: { color: '#33393D', fontSize: 16, lineHeight: 25, marginBottom: 16 },
-  detailButton: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: PRIMARY,
-    borderRadius: 14,
-    height: 50,
-    marginBottom: 16,
-  },
-  detailButtonText: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
-  detailNote: {
-    flexDirection: 'row',
-    gap: 10,
-    backgroundColor: '#EAF7EB',
-    borderRadius: 14,
-    padding: 14,
-    marginTop: 6,
-  },
-  detailNoteText: { flex: 1, color: '#2E5E31', fontSize: 13, lineHeight: 19 },
-
-  // Tab bar
-  tabBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    width: '100%',
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E8EB',
-    backgroundColor: '#FFFFFF',
-  },
-  tabItem: { flex: 1, alignItems: 'center', gap: 4 },
-  tabLabel: { fontSize: 12, color: '#6C757D' },
-  tabLabelActive: { color: PRIMARY, fontWeight: '600' },
-});
+    // Tab bar
+    tabBar: {
+      flexDirection: 'row',
+      justifyContent: 'space-around',
+      alignItems: 'center',
+      width: '100%',
+      paddingTop: 12,
+      borderTopWidth: 1,
+      borderTopColor: borde,
+      backgroundColor: tarjeta,
+    },
+    tabItem: { flex: 1, alignItems: 'center', gap: 4 },
+    tabLabel: { fontSize: 12, color: textoSuave },
+    tabLabelActive: { color: primario, fontWeight: '600' },
+  });

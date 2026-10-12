@@ -1,8 +1,6 @@
-
 import React, { useCallback, useState } from 'react';
 import {
   View,
-  Text,
   TouchableOpacity,
   StyleSheet,
   ScrollView,
@@ -14,11 +12,11 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { supabase } from '../../services/Supabase';
-
-const PRIMARY = '#4caf50';
+import Text from '../../components/Texto';
+import { useColores, useEstilos } from '../../context/ColorContext';
 
 const TAB_BAR_ITEMS = [
-  { key: 'hoy', label: 'Home', icon: 'list-outline', route: '/Home' },
+  { key: 'hoy', label: 'Home', icon: 'list-outline', route: '/home' },
   { key: 'progreso', label: 'Progreso', icon: 'stats-chart-outline', route: '/progreso' },
   { key: 'noticias', label: 'Noticias', icon: 'newspaper-outline', route: '/noticias' },
   { key: 'terapia', label: 'Terapia', icon: 'medkit-outline', route: '/terapia' },
@@ -146,6 +144,8 @@ function obtenerEstadoVentana(horaToma) {
 }
 
 export default function Progreso() {
+  const { primario, textoSuave } = useColores();
+  const styles = useEstilos(crearEstilos);
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -338,7 +338,7 @@ export default function Progreso() {
           {cargando ? (
             <ActivityIndicator
               size="large"
-              color={PRIMARY}
+              color={primario}
               style={styles.loading}
             />
           ) : medicamentos.length === 0 ? (
@@ -547,7 +547,7 @@ export default function Progreso() {
                 <Ionicons
                   name={item.icon}
                   size={22}
-                  color={activo ? PRIMARY : '#6C757D'}
+                  color={activo ? primario : textoSuave}
                 />
 
                 <Text
@@ -567,245 +567,247 @@ export default function Progreso() {
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#F8F9FA',
-  },
-  container: {
-    flex: 1,
-    backgroundColor: '#F8F9FA',
-  },
-  header: {
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E8EB',
-  },
-  headerTitle: {
-    color: '#1A1D1E',
-    fontSize: 26,
-    fontWeight: '600',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  content: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-  },
-  sectionTitle: {
-    color: '#1A1D1E',
-    fontSize: 22,
-    fontWeight: '700',
-  },
-  subtitle: {
-    color: '#6C757D',
-    fontSize: 14,
-    lineHeight: 20,
-    marginTop: 4,
-    marginBottom: 16,
-  },
-  loading: {
-    marginTop: 40,
-  },
-  subheadTitle: {
-    color: '#1A1D1E',
-    fontSize: 16,
-    fontWeight: '700',
-    marginTop: 10,
-    marginBottom: 12,
-  },
-  resumenCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#E5E8EB',
-    elevation: 2,
-  },
-  resumenHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  resumenTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#1A1D1E',
-  },
-  resumenPorcentaje: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: PRIMARY,
-  },
-  barBackground: {
-    height: 8,
-    backgroundColor: '#EAF7EB',
-    
-    borderRadius: 4,
-    overflow: 'hidden',
-    marginBottom: 12,
-  },
-  barFill: {
-    height: '100%',
-    backgroundColor: PRIMARY,
-    borderRadius: 4,
-  },
-  metricasContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingTop: 4,
-  },
-  metricaText: {
-    fontSize: 13,
-    color: '#6C757D',
-  },
-  metricaBold: {
-    color: '#1A1D1E',
-    fontWeight: '700',
-  },
-  tomaCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: '#E5E8EB',
-    elevation: 1,
-  },
-  tomaCardCompletada: {
-    backgroundColor: '#F0F9F1',
-    borderColor: '#C8E6C9',
-  },
-  tomaCardBloqueada: {
-    backgroundColor: '#F5F5F5',
-    borderColor: '#E0E0E0',
-    opacity: 0.75,
-  },
-  tomaHoraBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginRight: 12,
-  },
-  clockEmoji: {
-    fontSize: 16,
-  },
-  tomaHoraText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#1A1D1E',
-  },
-  tomaInfoBox: {
-    flex: 1,
-  },
-  tomaNombre: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1A1D1E',
-  },
-  tomaSubtext: {
-    fontSize: 12,
-    color: '#6C757D',
-    marginTop: 2,
-  },
-  ventanaText: {
-    fontSize: 11,
-    color: PRIMARY,
-    fontWeight: '600',
-    marginTop: 4,
-  },
-  ventanaVencida: {
-    color: '#E53935',
-  },
-  textTomado: {
-    color: PRIMARY,
-  },
-  textBloqueado: {
-    color: '#777777',
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  badgePendiente: {
-    backgroundColor: '#F0F0F0',
-  },
-  badgeDisponible: {
-    backgroundColor: '#FFF8E1',
-  },
-  badgeTomado: {
-    backgroundColor: PRIMARY,
-  },
-  statusEmoji: {
-    fontSize: 13,
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#666666',
-  },
-  statusTextDisponible: {
-    color: '#9A7200',
-  },
-  statusTextTomado: {
-    color: '#FFFFFF',
-  },
-  emptyCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 24,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E5E8EB',
-  },
-  emptyEmoji: {
-    fontSize: 36,
-    marginBottom: 10,
-  },
-  emptyTitle: {
-    color: '#1A1D1E',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  emptyText: {
-    color: '#6C757D',
-    fontSize: 13,
-    textAlign: 'center',
-    marginTop: 6,
-  },
-  tabBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    width: '100%',
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E8EB',
-    backgroundColor: '#FFFFFF',
-  },
-  tabItem: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 4,
-  },
-  tabLabel: {
-    fontSize: 12,
-    color: '#6C757D',
-  },
-  tabLabelActive: {
-    color: PRIMARY,
-    fontWeight: '600',
-  },
-});
+const crearEstilos = ({ primario, primarioSuave, fondo, tarjeta, texto, textoSuave, borde, fondoSecundario }) =>
+  StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: fondo,
+    },
+    container: {
+      flex: 1,
+      backgroundColor: fondo,
+    },
+    header: {
+      backgroundColor: tarjeta,
+      paddingHorizontal: 20,
+      paddingTop: 16,
+      paddingBottom: 14,
+      borderBottomWidth: 1,
+      borderBottomColor: borde,
+    },
+    headerTitle: {
+      color: texto,
+      fontSize: 26,
+      fontWeight: '600',
+    },
+    scrollView: {
+      flex: 1,
+    },
+    content: {
+      paddingHorizontal: 20,
+      paddingTop: 20,
+    },
+    sectionTitle: {
+      color: texto,
+      fontSize: 22,
+      fontWeight: '700',
+    },
+    subtitle: {
+      color: textoSuave,
+      fontSize: 14,
+      lineHeight: 20,
+      marginTop: 6,
+      marginBottom: 18,
+    },
+    loading: {
+      marginTop: 40,
+    },
+    subheadTitle: {
+      color: texto,
+      fontSize: 16,
+      fontWeight: '700',
+      marginTop: 10,
+      marginBottom: 12,
+    },
+    resumenCard: {
+      backgroundColor: tarjeta,
+      borderRadius: 18,
+      padding: 18,
+      marginBottom: 16,
+      borderWidth: 1,
+      borderColor: borde,
+      elevation: 2,
+    },
+    resumenHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 10,
+    },
+    resumenTitle: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: texto,
+    },
+    resumenPorcentaje: {
+      fontSize: 20,
+      fontWeight: '800',
+      color: primario,
+    },
+    barBackground: {
+      height: 8,
+      backgroundColor: primarioSuave,
+      borderRadius: 4,
+      overflow: 'hidden',
+      marginBottom: 12,
+    },
+    barFill: {
+      height: '100%',
+      backgroundColor: primario,
+      borderRadius: 4,
+    },
+    metricasContainer: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      paddingTop: 4,
+    },
+    metricaText: {
+      fontSize: 13,
+      color: textoSuave,
+    },
+    metricaBold: {
+      color: texto,
+      fontWeight: '700',
+    },
+    tomaCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: tarjeta,
+      borderRadius: 18,
+      padding: 14,
+      marginBottom: 10,
+      borderWidth: 1,
+      borderColor: borde,
+      elevation: 1,
+    },
+    tomaCardCompletada: {
+      backgroundColor: primarioSuave,
+      borderColor: primario,
+    },
+    tomaCardBloqueada: {
+      backgroundColor: fondoSecundario,
+      borderColor: borde,
+      opacity: 0.75,
+    },
+    tomaHoraBox: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      marginRight: 12,
+    },
+    clockEmoji: {
+      fontSize: 16,
+    },
+    tomaHoraText: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: texto,
+    },
+    tomaInfoBox: {
+      flex: 1,
+    },
+    tomaNombre: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: texto,
+    },
+    tomaSubtext: {
+      fontSize: 12,
+      color: textoSuave,
+      marginTop: 2,
+    },
+    ventanaText: {
+      fontSize: 11,
+      color: primario,
+      fontWeight: '600',
+      marginTop: 4,
+    },
+    ventanaVencida: {
+      color: '#E53935',
+    },
+    textTomado: {
+      color: primario,
+    },
+    textBloqueado: {
+      color: textoSuave,
+    },
+    statusBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 20,
+    },
+    badgePendiente: {
+      backgroundColor: fondoSecundario,
+    },
+    badgeDisponible: {
+      backgroundColor: primarioSuave,
+    },
+    badgeTomado: {
+      backgroundColor: primario,
+    },
+    statusEmoji: {
+      fontSize: 13,
+    },
+    statusText: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: textoSuave,
+    },
+    statusTextDisponible: {
+      color: primario,
+    },
+    statusTextTomado: {
+      color: '#FFFFFF',
+    },
+    emptyCard: {
+      backgroundColor: tarjeta,
+      borderRadius: 18,
+      padding: 28,
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: borde,
+    },
+    emptyEmoji: {
+      fontSize: 36,
+      marginBottom: 10,
+    },
+    emptyTitle: {
+      color: texto,
+      fontSize: 17,
+      fontWeight: '700',
+      textAlign: 'center',
+    },
+    emptyText: {
+      color: textoSuave,
+      fontSize: 14,
+      lineHeight: 20,
+      textAlign: 'center',
+      marginTop: 6,
+    },
+    tabBar: {
+      flexDirection: 'row',
+      justifyContent: 'space-around',
+      alignItems: 'center',
+      width: '100%',
+      paddingTop: 12,
+      borderTopWidth: 1,
+      borderTopColor: borde,
+      backgroundColor: tarjeta,
+    },
+    tabItem: {
+      flex: 1,
+      alignItems: 'center',
+      gap: 4,
+    },
+    tabLabel: {
+      fontSize: 12,
+      color: textoSuave,
+    },
+    tabLabelActive: {
+      color: primario,
+      fontWeight: '600',
+    },
+  });
