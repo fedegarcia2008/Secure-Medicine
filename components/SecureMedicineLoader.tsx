@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { Animated, Easing, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
+import { useColores } from '../context/ColorContext';
 
 /**
  * Logo de Secure Medicine que se dibuja línea por línea.
@@ -64,12 +65,14 @@ const SHAPES: Shape[] = [
 
 export default function SecureMedicineLoader({
   size = 160,
-  color = '#4CAF50',
+  color,
   speed = 1,
   onFinish,
   loop = false,
   loopDelay = 600,
 }: Props) {
+  const { primario } = useColores();
+  const colorFinal = color ?? primario;
   const progress = useRef(SHAPES.map(() => new Animated.Value(0))).current;
   const finishRef = useRef(onFinish);
   finishRef.current = onFinish;
@@ -118,7 +121,7 @@ export default function SecureMedicineLoader({
             key={s.id}
             d={s.d}
             fill="none"
-            stroke={color}
+            stroke={colorFinal}
             strokeWidth={STROKE}
             strokeLinecap={s.cap}
             strokeLinejoin="round"
@@ -129,7 +132,7 @@ export default function SecureMedicineLoader({
           />
         );
       }),
-    [progress, color]
+    [progress, colorFinal]
   );
 
   return (

@@ -1,7 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import {
   View,
-  Text,
   TouchableOpacity,
   StyleSheet,
   ScrollView,
@@ -14,8 +13,9 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { supabase } from '../../services/Supabase';
+import Text from '../../components/Texto';
+import { useColores, useEstilos } from '../../context/ColorContext';
 
-const PRIMARY = '#4caf50';
 
 const TAB_BAR_ITEMS = [
   { key: 'hoy', label: 'Home', icon: 'list-outline', route: '/home' },
@@ -50,10 +50,12 @@ function formatearFecha(fecha) {
 }
 
 function InfoRow({ icon, label, value, last }) {
+  const { primario } = useColores();
+  const styles = useEstilos(crearEstilos);
   return (
     <View style={[styles.infoRow, last && styles.lastInfoRow]}>
       <View style={styles.infoIcon}>
-        <Ionicons name={icon} size={20} color={PRIMARY} />
+        <Ionicons name={icon} size={20} color={primario} />
       </View>
 
       <View style={styles.infoTextContainer}>
@@ -65,6 +67,8 @@ function InfoRow({ icon, label, value, last }) {
 }
 
 export default function Terapia() {
+  const { primario, textoMedio, textoSuave } = useColores();
+  const styles = useEstilos(crearEstilos);
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -251,12 +255,12 @@ export default function Terapia() {
 
       if (!user) return;
 
-const { data: resultado, error: perfilErr } = await supabase.rpc(
-  'buscar_perfil_por_codigo',
-  { p_codigo: codigoIngresado }
-);
+      const { data: resultado, error: perfilErr } = await supabase.rpc(
+        'buscar_perfil_por_codigo',
+        { p_codigo: codigoIngresado }
+      );
 
-const perfilEncontrado = resultado?.[0];
+      const perfilEncontrado = resultado?.[0];
 
       if (perfilErr || !perfilEncontrado) {
         Alert.alert(
@@ -329,7 +333,7 @@ const perfilEncontrado = resultado?.[0];
               <Ionicons
                 name="people-outline"
                 size={20}
-                color={PRIMARY}
+                color={primario}
               />
 
               <Text style={styles.linkButtonText}>
@@ -339,13 +343,13 @@ const perfilEncontrado = resultado?.[0];
 
             <TouchableOpacity
               style={styles.settingsButton}
-              onPress={() => router.push('../configuracion/ajustes')}
+              onPress={() => router.push('/configuracion/ajustes')}
               activeOpacity={0.7}
             >
               <Ionicons
                 name="settings-outline"
                 size={22}
-                color="#4A5359"
+                color={textoMedio}
               />
             </TouchableOpacity>
           </View>
@@ -398,7 +402,7 @@ const perfilEncontrado = resultado?.[0];
                       color={
                         cuentaSeleccionada === cuenta.id
                           ? '#FFFFFF'
-                          : '#4A5359'
+                          : textoMedio
                       }
                     />
 
@@ -426,7 +430,7 @@ const perfilEncontrado = resultado?.[0];
                       color={
                         cuentaSeleccionada === cuenta.id
                           ? '#FFFFFF'
-                          : '#6C757D'
+                          : textoSuave
                       }
                     />
                   </TouchableOpacity>
@@ -459,7 +463,7 @@ const perfilEncontrado = resultado?.[0];
           {cargando ? (
             <ActivityIndicator
               size="large"
-              color={PRIMARY}
+              color={primario}
               style={{ marginTop: 40 }}
             />
           ) : medicamentos.length === 0 ? (
@@ -468,7 +472,7 @@ const perfilEncontrado = resultado?.[0];
                 <Ionicons
                   name="medkit-outline"
                   size={30}
-                  color={PRIMARY}
+                  color={primario}
                 />
               </View>
 
@@ -592,7 +596,7 @@ const perfilEncontrado = resultado?.[0];
                 <Ionicons
                   name={item.icon}
                   size={22}
-                  color={activo ? PRIMARY : '#6C757D'}
+                  color={activo ? primario : textoSuave}
                 />
 
                 <Text
@@ -627,7 +631,7 @@ const perfilEncontrado = resultado?.[0];
               <TextInput
                 style={styles.modalInput}
                 placeholder="Ej: ABC1234"
-                placeholderTextColor="#999"
+                placeholderTextColor={textoSuave}
                 autoCapitalize="characters"
                 value={codigoIngresado}
                 onChangeText={setCodigoIngresado}
@@ -672,28 +676,28 @@ const perfilEncontrado = resultado?.[0];
 }
 
 
-const styles = StyleSheet.create({
+const crearEstilos = ({ primario, primarioSuave, fondo, tarjeta, texto, textoMedio, textoSuave, borde, fondoSecundario, fondoInput, peligroSuave }) => StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: fondo,
   },
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: fondo,
   },
   header: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: tarjeta,
     paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E8EB',
+    borderBottomColor: borde,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
   headerTitle: {
-    color: '#1A1D1E',
+    color: texto,
     fontSize: 26,
     fontWeight: '600',
   },
@@ -706,7 +710,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#F1F3F5',
+    backgroundColor: fondoSecundario,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -714,20 +718,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#EAF7EB',
+    backgroundColor: primarioSuave,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
   },
   linkButtonText: {
-    color: PRIMARY,
+    color: primario,
     fontWeight: '600',
     fontSize: 13,
   },
   selectorContainer: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: tarjeta,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E8EB',
+    borderBottomColor: borde,
   },
   selectorScroll: {
     paddingHorizontal: 20,
@@ -740,10 +744,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 18,
-    backgroundColor: '#F1F3F5',
+    backgroundColor: fondoSecundario,
   },
   chipActive: {
-    backgroundColor: PRIMARY,
+    backgroundColor: primario,
   },
   chipAccountButton: {
     flexDirection: 'row',
@@ -759,7 +763,7 @@ const styles = StyleSheet.create({
     marginLeft: 6,
   },
   chipText: {
-    color: '#4A5359',
+    color: textoMedio,
     fontSize: 13,
     fontWeight: '600',
   },
@@ -774,24 +778,24 @@ const styles = StyleSheet.create({
     paddingTop: 20,
   },
   sectionTitle: {
-    color: '#1A1D1E',
+    color: texto,
     fontSize: 22,
     fontWeight: '700',
   },
   subtitle: {
-    color: '#6C757D',
+    color: textoSuave,
     fontSize: 14,
     lineHeight: 20,
     marginTop: 6,
     marginBottom: 18,
   },
   medicamentoCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: tarjeta,
     borderRadius: 18,
     padding: 18,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#E5E8EB',
+    borderColor: borde,
     elevation: 2,
   },
   medicamentoHeader: {
@@ -802,7 +806,7 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: '#EAF7EB',
+    backgroundColor: primarioSuave,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 14,
@@ -814,12 +818,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   medicamentoLabel: {
-    color: '#888888',
+    color: textoSuave,
     fontSize: 13,
     marginBottom: 3,
   },
   medicamentoNombre: {
-    color: '#1A1D1E',
+    color: texto,
     fontSize: 20,
     fontWeight: '700',
   },
@@ -827,14 +831,14 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#FDECEA',
+    backgroundColor: peligroSuave,
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: 8,
   },
   separador: {
     height: 1,
-    backgroundColor: '#E5E8EB',
+    backgroundColor: borde,
     marginVertical: 18,
   },
   infoRow: {
@@ -849,7 +853,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#EAF7EB',
+    backgroundColor: primarioSuave,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -858,40 +862,40 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   infoLabel: {
-    color: '#888888',
+    color: textoSuave,
     fontSize: 13,
     marginBottom: 2,
   },
   infoValue: {
-    color: '#1A1D1E',
+    color: texto,
     fontSize: 15,
     fontWeight: '600',
   },
   emptyCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: tarjeta,
     borderRadius: 18,
     padding: 28,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#E5E8EB',
+    borderColor: borde,
   },
   emptyIcon: {
     width: 62,
     height: 62,
     borderRadius: 31,
-    backgroundColor: '#EAF7EB',
+    backgroundColor: primarioSuave,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 14,
   },
   emptyTitle: {
-    color: '#1A1D1E',
+    color: texto,
     fontSize: 17,
     fontWeight: '700',
     textAlign: 'center',
   },
   emptyText: {
-    color: '#6C757D',
+    color: textoSuave,
     fontSize: 14,
     lineHeight: 20,
     textAlign: 'center',
@@ -903,7 +907,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: PRIMARY,
+    backgroundColor: primario,
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 28,
@@ -921,8 +925,8 @@ const styles = StyleSheet.create({
     width: '100%',
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#E5E8EB',
-    backgroundColor: '#FFFFFF',
+    borderTopColor: borde,
+    backgroundColor: tarjeta,
   },
   tabItem: {
     flex: 1,
@@ -931,10 +935,10 @@ const styles = StyleSheet.create({
   },
   tabLabel: {
     fontSize: 12,
-    color: '#6C757D',
+    color: textoSuave,
   },
   tabLabelActive: {
-    color: PRIMARY,
+    color: primario,
     fontWeight: '600',
   },
   overlayModal: {
@@ -947,30 +951,30 @@ const styles = StyleSheet.create({
   modalCard: {
     width: '100%',
     maxWidth: 320,
-    backgroundColor: '#FFF',
+    backgroundColor: tarjeta,
     borderRadius: 18,
     padding: 20,
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1A1D1E',
+    color: texto,
     marginBottom: 6,
   },
   modalSubtext: {
     fontSize: 13,
-    color: '#6C757D',
+    color: textoSuave,
     marginBottom: 16,
   },
   modalInput: {
-    backgroundColor: '#F5F6F8',
+    backgroundColor: fondoInput,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 16,
     fontWeight: '700',
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: borde,
     textAlign: 'center',
     letterSpacing: 2,
     marginBottom: 20,
@@ -986,11 +990,11 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   btnCancelText: {
-    color: '#6C757D',
+    color: textoSuave,
     fontWeight: '600',
   },
   btnConfirm: {
-    backgroundColor: PRIMARY,
+    backgroundColor: primario,
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 10,

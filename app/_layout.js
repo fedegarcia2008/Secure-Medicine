@@ -1,11 +1,31 @@
 // app/_layout.js
 import { Stack } from 'expo-router';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
+import { ColorProvider, useColores } from '../context/ColorContext';
+import { TamanoLetraProvider } from '../context/TamanoLetraContext';
+
+function Contenido() {
+  const { esOscuro, fondo } = useColores();
+
+  return (
+    <>
+      <StatusBar style={esOscuro ? 'light' : 'dark'} />
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: fondo },
+        }}
+      />
+    </>
+  );
+}
 
 export default function RootLayout() {
   return (
-    <SafeAreaProvider>
-      <Stack screenOptions={{ headerShown: false }} />
-    </SafeAreaProvider>
+    <ColorProvider>
+      <TamanoLetraProvider>
+        <Contenido />
+      </TamanoLetraProvider>
+    </ColorProvider>
   );
 }

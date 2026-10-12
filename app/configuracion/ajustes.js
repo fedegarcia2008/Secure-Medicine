@@ -1,7 +1,6 @@
 import React from 'react';
 import {
   View,
-  Text,
   TouchableOpacity,
   StyleSheet,
   ScrollView,
@@ -11,11 +10,15 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../services/Supabase';
+import Text from '../../components/Texto';
+import { useColorElegido, useColores, useEstilos } from '../../context/ColorContext';
+import { useTamanoLetra } from '../../context/TamanoLetraContext';
 
-const PRIMARY = '#4caf50';
 const DANGER = '#E53935';
 
 function SettingRow({ icon, label, value, onPress, danger, last }) {
+  const { primario, textoSuave } = useColores();
+  const styles = useEstilos(crearEstilos);
   return (
     <TouchableOpacity
       style={[styles.row, !last && styles.rowDivider]}
@@ -26,7 +29,7 @@ function SettingRow({ icon, label, value, onPress, danger, last }) {
         <Ionicons
           name={icon}
           size={20}
-          color={danger ? DANGER : PRIMARY}
+          color={danger ? DANGER : primario}
         />
       </View>
 
@@ -36,12 +39,13 @@ function SettingRow({ icon, label, value, onPress, danger, last }) {
 
       {value ? <Text style={styles.rowValue}>{value}</Text> : null}
 
-      <Ionicons name="chevron-forward" size={20} color="#6C757D" />
+      <Ionicons name="chevron-forward" size={20} color={textoSuave} />
     </TouchableOpacity>
   );
 }
 
 function Section({ title, children }) {
+  const styles = useEstilos(crearEstilos);
   return (
     <View style={styles.section}>
       <Text style={styles.sectionLabel}>{title}</Text>
@@ -51,8 +55,13 @@ function Section({ title, children }) {
 }
 
 export default function Ajustes() {
+  const { texto } = useColores();
+  const styles = useEstilos(crearEstilos);
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { opcionActual } = useTamanoLetra();
+  const colorActual = useColores();
+  const { opcionTema } = useColorElegido();
 
   // Se irán reemplazando por router.push('/ruta') a medida que armemos cada sección
   const proximamente = (nombre) => {
@@ -118,7 +127,7 @@ export default function Ajustes() {
           onPress={() => router.back()}
           activeOpacity={0.7}
         >
-          <Ionicons name="arrow-back" size={22} color="#1A1D1E" />
+          <Ionicons name="arrow-back" size={22} color={texto} />
         </TouchableOpacity>
 
         <Text style={styles.title}>Ajustes</Text>
@@ -141,14 +150,20 @@ export default function Ajustes() {
           <SettingRow
             icon="contrast-outline"
             label="Tema"
-            value="Claro"
-            onPress={() => proximamente('Tema')}
+            value={opcionTema.label}
+            onPress={() => router.push('/configuracion/tema')}
+          />
+          <SettingRow
+            icon="color-palette-outline"
+            label="Color principal"
+            value={colorActual.nombre}
+            onPress={() => router.push('/configuracion/color')}
           />
           <SettingRow
             icon="text-outline"
             label="Tamaño de letra"
-            value="Mediano"
-            onPress={() => proximamente('Tamaño de letra')}
+            value={opcionActual.label}
+            onPress={() => router.push('/configuracion/tamano-letra')}
             last
           />
         </Section>
@@ -173,10 +188,10 @@ export default function Ajustes() {
   );
 }
 
-const styles = StyleSheet.create({
+const crearEstilos = ({ primario, primarioSuave, fondo, tarjeta, texto, textoMedio, textoSuave, borde, fondoSecundario, fondoInput, peligroSuave }) => StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: fondo,
   },
   scrollView: {
     flex: 1,
@@ -189,12 +204,12 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#F1F3F5',
+    backgroundColor: fondoSecundario,
     justifyContent: 'center',
     alignItems: 'center',
   },
   title: {
-    color: '#1A1D1E',
+    color: texto,
     fontSize: 28,
     fontWeight: '700',
     marginTop: 24,
@@ -204,17 +219,17 @@ const styles = StyleSheet.create({
     marginTop: 24,
   },
   sectionLabel: {
-    color: '#4A5359',
+    color: textoMedio,
     fontSize: 13,
     fontWeight: '700',
     marginBottom: 10,
     marginLeft: 2,
   },
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: tarjeta,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#E5E8EB',
+    borderColor: borde,
     overflow: 'hidden',
   },
   row: {
@@ -225,23 +240,23 @@ const styles = StyleSheet.create({
   },
   rowDivider: {
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E8EB',
+    borderBottomColor: borde,
   },
   rowIcon: {
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: '#EAF7EB',
+    backgroundColor: primarioSuave,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 14,
   },
   rowIconDanger: {
-    backgroundColor: '#FDECEA',
+    backgroundColor: peligroSuave,
   },
   rowLabel: {
     flex: 1,
-    color: '#1A1D1E',
+    color: texto,
     fontSize: 16,
     fontWeight: '500',
   },
@@ -249,7 +264,7 @@ const styles = StyleSheet.create({
     color: DANGER,
   },
   rowValue: {
-    color: '#6C757D',
+    color: textoSuave,
     fontSize: 14,
     marginRight: 6,
   },
