@@ -18,7 +18,7 @@ import { supabase } from '../../services/Supabase';
 const PRIMARY = '#4caf50';
 
 const TAB_BAR_ITEMS = [
-  { key: 'hoy', label: 'Home', icon: 'list-outline', route: '/Home' },
+  { key: 'hoy', label: 'Home', icon: 'list-outline', route: '/home' },
   { key: 'progreso', label: 'Progreso', icon: 'stats-chart-outline', route: '/progreso' },
   { key: 'noticias', label: 'Noticias', icon: 'newspaper-outline', route: '/noticias' },
   { key: 'terapia', label: 'Terapia', icon: 'medkit-outline', route: '/terapia' },
@@ -251,11 +251,12 @@ export default function Terapia() {
 
       if (!user) return;
 
-      const { data: perfilEncontrado, error: perfilErr } = await supabase
-        .from('perfiles')
-        .select('id, apodo')
-        .eq('codigo', codigoIngresado.trim().toUpperCase())
-        .single();
+const { data: resultado, error: perfilErr } = await supabase.rpc(
+  'buscar_perfil_por_codigo',
+  { p_codigo: codigoIngresado }
+);
+
+const perfilEncontrado = resultado?.[0];
 
       if (perfilErr || !perfilEncontrado) {
         Alert.alert(

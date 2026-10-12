@@ -127,7 +127,7 @@ export default function Ajustes() {
           <SettingRow
             icon="person-outline"
             label="Información personal"
-            onPress={() => proximamente('Información personal')}
+            onPress={() => router.push('/configuracion/informacion-personal')}
           />
           <SettingRow
             icon="people-outline"

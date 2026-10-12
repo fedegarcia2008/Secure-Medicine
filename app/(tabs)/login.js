@@ -93,12 +93,12 @@ export default function Login() {
       }
 
       Alert.alert('¡Listo!', `Tu código es: ${codigoFinal}\nGuardalo para compartirlo.`);
-      router.replace('/Home');
+      router.replace('/home');
       return;
     }
 
     setCargando(false);
-    router.replace('/Home');
+    router.replace('/home');
   };
 
   const handleLogin = async () => {
@@ -119,7 +119,7 @@ export default function Login() {
       return;
     }
 
-    router.replace('/Home');
+    router.replace('/home');
   };
 
   return (

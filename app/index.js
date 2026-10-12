@@ -7,7 +7,7 @@ export default function Splash() {
   const router = useRouter();
 
   const handleFinish = useCallback(() => {
-    setTimeout(() => router.replace('/home'), 600);
+    setTimeout(() => router.replace('/login'), 600);
   }, [router]);
 
   return (
