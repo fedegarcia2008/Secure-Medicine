@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   TouchableOpacity,
@@ -62,11 +62,9 @@ export default function Ajustes() {
   const { opcionActual } = useTamanoLetra();
   const colorActual = useColores();
   const { opcionTema } = useColorElegido();
+  const [eliminando, setEliminando] = useState(false);
 
-  // Se irán reemplazando por router.push('/ruta') a medida que armemos cada sección
-  const proximamente = (nombre) => {
-    Alert.alert(nombre, 'Esta sección estará disponible pronto.');
-  };
+
 
   const confirmarCerrarSesion = () => {
     Alert.alert(
@@ -97,6 +95,27 @@ export default function Ajustes() {
     );
   };
 
+  const eliminarCuenta = async () => {
+    if (eliminando) return;
+    setEliminando(true);
+    try {
+      const { error } = await supabase.rpc('eliminar_mi_cuenta');
+
+      if (error) {
+        Alert.alert('Error', 'No se pudo eliminar la cuenta. Intentá de nuevo.');
+        return;
+      }
+
+      // El usuario ya no existe en el servidor: limpiamos la sesión local
+      await supabase.auth.signOut({ scope: 'local' });
+      router.replace('/');
+    } catch (e) {
+      Alert.alert('Error', 'Ocurrió un problema al eliminar la cuenta.');
+    } finally {
+      setEliminando(false);
+    }
+  };
+
   const confirmarEliminarCuenta = () => {
     Alert.alert(
       'Eliminar cuenta',
@@ -104,9 +123,9 @@ export default function Ajustes() {
       [
         { text: 'Cancelar', style: 'cancel' },
         {
-          text: 'Continuar',
+          text: 'Eliminar definitivamente',
           style: 'destructive',
-          onPress: () => proximamente('Eliminar cuenta'),
+          onPress: eliminarCuenta,
         },
       ]
     );
@@ -141,7 +160,7 @@ export default function Ajustes() {
           <SettingRow
             icon="people-outline"
             label="Cuentas enlazadas"
-            onPress={() => proximamente('Cuentas enlazadas')}
+            onPress={() => router.push('/configuracion/cuentas-enlazadas')}
             last
           />
         </Section>
@@ -173,7 +192,7 @@ export default function Ajustes() {
             icon="trash-outline"
             label="Eliminar cuenta"
             danger
-            onPress={confirmarEliminarCuenta}
+            onPress={eliminando ? undefined : confirmarEliminarCuenta}
           />
           <SettingRow
             icon="log-out-outline"
