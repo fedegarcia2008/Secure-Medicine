@@ -14,15 +14,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { supabase } from '../../services/Supabase';
 import Text from '../../components/Texto';
+import TabBar, { TAB_BAR_HEIGHT } from '../../components/TabBar';
 import { useColores, useEstilos } from '../../context/ColorContext';
-
-
-const TAB_BAR_ITEMS = [
-  { key: 'hoy', label: 'Home', icon: 'list-outline', route: '/home' },
-  { key: 'progreso', label: 'Progreso', icon: 'stats-chart-outline', route: '/progreso' },
-  { key: 'noticias', label: 'Noticias', icon: 'newspaper-outline', route: '/noticias' },
-  { key: 'terapia', label: 'Terapia', icon: 'medkit-outline', route: '/terapia' },
-];
 
 const MESES = [
   'Enero',
@@ -563,7 +556,7 @@ export default function Terapia() {
           <TouchableOpacity
             style={[
               styles.addButton,
-              { bottom: 72 + insets.bottom },
+              { bottom: TAB_BAR_HEIGHT + insets.bottom + 16 },
             ]}
             activeOpacity={0.85}
             onPress={() => router.push('/buscador')}
@@ -578,39 +571,7 @@ export default function Terapia() {
           </TouchableOpacity>
         )}
 
-        <View
-          style={[
-            styles.tabBar,
-            { paddingBottom: 12 + insets.bottom },
-          ]}
-        >
-          {TAB_BAR_ITEMS.map((item) => {
-            const activo = item.key === 'terapia';
-
-            return (
-              <TouchableOpacity
-                key={item.key}
-                style={styles.tabItem}
-                onPress={() => router.replace(item.route)}
-              >
-                <Ionicons
-                  name={item.icon}
-                  size={22}
-                  color={activo ? primario : textoSuave}
-                />
-
-                <Text
-                  style={[
-                    styles.tabLabel,
-                    activo && styles.tabLabelActive,
-                  ]}
-                >
-                  {item.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+        <TabBar activa="terapia" />
 
         <Modal
           visible={modalEnlazarVisible}
@@ -917,29 +878,6 @@ const crearEstilos = ({ primario, primarioSuave, fondo, tarjeta, texto, textoMed
     color: '#FFFFFF',
     fontWeight: '700',
     fontSize: 15,
-  },
-  tabBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    width: '100%',
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: borde,
-    backgroundColor: tarjeta,
-  },
-  tabItem: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 4,
-  },
-  tabLabel: {
-    fontSize: 12,
-    color: textoSuave,
-  },
-  tabLabelActive: {
-    color: primario,
-    fontWeight: '600',
   },
   overlayModal: {
     flex: 1,

@@ -8,19 +8,12 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
 import { supabase } from '../../services/Supabase';
 import Text from '../../components/Texto';
+import TabBar from '../../components/TabBar';
 import { useColores, useEstilos } from '../../context/ColorContext';
-
-const TAB_BAR_ITEMS = [
-  { key: 'hoy', label: 'Home', icon: 'list-outline', route: '/home' },
-  { key: 'progreso', label: 'Progreso', icon: 'stats-chart-outline', route: '/progreso' },
-  { key: 'noticias', label: 'Noticias', icon: 'newspaper-outline', route: '/noticias' },
-  { key: 'terapia', label: 'Terapia', icon: 'medkit-outline', route: '/terapia' },
-];
 
 function getClaveHoy() {
   const hoy = new Date();
@@ -144,9 +137,8 @@ function obtenerEstadoVentana(horaToma) {
 }
 
 export default function Progreso() {
-  const { primario, textoSuave } = useColores();
+  const { primario } = useColores();
   const styles = useEstilos(crearEstilos);
-  const router = useRouter();
   const insets = useSafeAreaInsets();
 
   const [medicamentos, setMedicamentos] = useState([]);
@@ -529,39 +521,7 @@ export default function Progreso() {
           )}
         </ScrollView>
 
-        <View
-          style={[
-            styles.tabBar,
-            { paddingBottom: 12 + insets.bottom },
-          ]}
-        >
-          {TAB_BAR_ITEMS.map((item) => {
-            const activo = item.key === 'progreso';
-
-            return (
-              <TouchableOpacity
-                key={item.key}
-                style={styles.tabItem}
-                onPress={() => router.replace(item.route)}
-              >
-                <Ionicons
-                  name={item.icon}
-                  size={22}
-                  color={activo ? primario : textoSuave}
-                />
-
-                <Text
-                  style={[
-                    styles.tabLabel,
-                    activo && styles.tabLabelActive,
-                  ]}
-                >
-                  {item.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+        <TabBar activa="progreso" />
       </View>
     </SafeAreaView>
   );
@@ -786,28 +746,5 @@ const crearEstilos = ({ primario, primarioSuave, fondo, tarjeta, texto, textoSua
       lineHeight: 20,
       textAlign: 'center',
       marginTop: 6,
-    },
-    tabBar: {
-      flexDirection: 'row',
-      justifyContent: 'space-around',
-      alignItems: 'center',
-      width: '100%',
-      paddingTop: 12,
-      borderTopWidth: 1,
-      borderTopColor: borde,
-      backgroundColor: tarjeta,
-    },
-    tabItem: {
-      flex: 1,
-      alignItems: 'center',
-      gap: 4,
-    },
-    tabLabel: {
-      fontSize: 12,
-      color: textoSuave,
-    },
-    tabLabelActive: {
-      color: primario,
-      fontWeight: '600',
     },
   });

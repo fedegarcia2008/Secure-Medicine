@@ -136,7 +136,7 @@ export default function SecureMedicineLoader({
   );
 
   return (
-    <View style={{ width: size, height }}>
+    <View style={{ width: size, height, backgroundColor: '#FFFFFF' }}>
       <Svg width={size} height={height} viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}>
         {paths}
       </Svg>

@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "SecureMedicine",
+    "name": "Secure Medicine",
     "slug": "SecureMedicine",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -9,7 +9,11 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.fedegarcia2008.SecureMedicine",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -28,12 +32,7 @@
     },
     "plugins": [
       "expo-router",
-      [
-        "expo-splash-screen",
-        {
-          "backgroundColor": "#0066FF"
-        }
-      ],
+      "expo-splash-screen",
       "expo-font",
       "expo-image",
       "expo-status-bar",
@@ -48,8 +47,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "0bcb3c72-da07-49a5-8e00-d20510b5d607"
+        "projectId": "bed03ef3-924c-41f2-8d7e-c65a5c826fb1"
       }
-    }
+    },
+    "owner": "fedegarcia2008"
   }
 }

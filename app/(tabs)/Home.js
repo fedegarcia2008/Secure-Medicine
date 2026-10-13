@@ -15,20 +15,13 @@ import * as Clipboard from 'expo-clipboard';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter } from 'expo-router';
 import QuoteCard from '../../components/Quotecard';
+import TabBar, { TAB_BAR_HEIGHT } from '../../components/TabBar';
 import { supabase } from '../../services/Supabase';
 import { useColores, useEstilos } from '../../context/ColorContext';
 
 const logoApp = require('../../assets/images/Secure Medicine.png');
-const TAB_BAR_HEIGHT = 56;
 
 //ERROR EN TAMAÑO DE LETRA EN ESTA PANTALLA HOME
-
-const TAB_BAR_ITEMS = [
-  { key: 'hoy', label: 'Home', icon: 'list-outline', route: '/Home' },
-  { key: 'progreso', label: 'Progreso', icon: 'stats-chart-outline', route: '/progreso' },
-  { key: 'noticias', label: 'Noticias', icon: 'newspaper-outline', route: '/noticias' },
-  { key: 'terapia', label: 'Terapia', icon: 'medkit-outline', route: '/terapia' },
-];
 
 function formatearFecha(fecha) {
   return `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}-${String(fecha.getDate()).padStart(2, '0')}`;
@@ -198,7 +191,6 @@ export default function HoyScreen() {
   const [diasVisibles, setDiasVisibles] = useState(obtenerSemana(HOY_STRING));
   const [seccionAbierta, setSeccionAbierta] = useState(true);
   const [tareaSeleccionada, setTareaSeleccionada] = useState(null);
-  const [tabActiva, setTabActiva] = useState('hoy');
 
   const [codigo, setCodigo] = useState(null);
   const [mostrarCodigo, setMostrarCodigo] = useState(true);
@@ -389,14 +381,6 @@ export default function HoyScreen() {
 
     nuevoMes.setMonth(nuevoMes.getMonth() + incremento);
     setMesVista(nuevoMes);
-  };
-
-  const manejarNavegacionTab = (item) => {
-    setTabActiva(item.key);
-
-    if (item.route) {
-      router.replace(item.route);
-    }
   };
 
   const mesesNombres = [
@@ -737,39 +721,7 @@ export default function HoyScreen() {
         </Text>
       </TouchableOpacity>
 
-      <View
-        style={[
-          styles.tabBar,
-          { paddingBottom: 12 + insets.bottom },
-        ]}
-      >
-        {TAB_BAR_ITEMS.map((item) => {
-          const activo = item.key === tabActiva;
-
-          return (
-            <TouchableOpacity
-              key={item.key}
-              style={styles.tabItem}
-              onPress={() => manejarNavegacionTab(item)}
-            >
-              <Ionicons
-                name={item.icon}
-                size={22}
-                color={activo ? primario : textoSuave}
-              />
-
-              <Text
-                style={[
-                  styles.tabLabel,
-                  activo && styles.tabLabelActive,
-                ]}
-              >
-                {item.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+      <TabBar activa="hoy" />
 
       <Modal
         visible={!!tareaSeleccionada}
@@ -943,7 +895,6 @@ const crearEstilos = ({
   textoSuave,
   borde,
   fondoSecundario,
-  peligroSuave,
 }) => StyleSheet.create({
   safeArea: {
     flex: 1,
@@ -1283,33 +1234,6 @@ const crearEstilos = ({
     color: '#FFFFFF',
     fontWeight: '700',
     fontSize: 15,
-  },
-
-  tabBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    width: '100%',
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: borde,
-    backgroundColor: tarjeta,
-  },
-
-  tabItem: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 4,
-  },
-
-  tabLabel: {
-    fontSize: 12,
-    color: textoSuave,
-  },
-
-  tabLabelActive: {
-    color: primario,
-    fontWeight: '600',
   },
 
   modalOverlay: {

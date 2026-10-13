@@ -14,8 +14,9 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
 import Text from '../../components/Texto';
+import TabBar from '../../components/TabBar';
 import { useColores, useEstilos } from '../../context/ColorContext';
 
 const GUARDADAS_KEY = '@noticias_guardadas';
@@ -25,13 +26,6 @@ const API_KEY = process.env.EXPO_PUBLIC_NEWSDATA_KEY;
 const API_URL = 'https://newsdata.io/api/1/latest';
 const CACHE_TTL = 15 * 60 * 1000; // 15 minutos
 const CACHE_PREFIX = '@news_cache_v2_'; // v2: descarta el caché de la versión anterior
-
-const TAB_BAR_ITEMS = [
-  { key: 'hoy', label: 'Home', icon: 'list-outline', route: '/home' },
-  { key: 'progreso', label: 'Progreso', icon: 'stats-chart-outline', route: '/progreso' },
-  { key: 'noticias', label: 'Noticias', icon: 'newspaper-outline', route: '/noticias' },
-  { key: 'terapia', label: 'Terapia', icon: 'medkit-outline', route: '/terapia' },
-];
 
 const CATEGORIAS = ['Todas', 'Medicación', 'Enfermedades', 'Nutrición', 'Bienestar', 'Guardadas'];
 
@@ -409,7 +403,6 @@ function NoticiaCard({ noticia, guardada, onPress, onToggleGuardada }) {
 export default function NoticiasScreen() {
   const { primario, texto, textoSuave } = useColores();
   const styles = useEstilos(crearEstilos);
-  const router = useRouter();
   const insets = useSafeAreaInsets();
 
   const [categoria, setCategoria] = useState('Todas');
@@ -718,23 +711,7 @@ export default function NoticiasScreen() {
         </ScrollView>
 
         {/* TAB BAR */}
-        <View style={[styles.tabBar, { paddingBottom: 12 + insets.bottom }]}>
-          {TAB_BAR_ITEMS.map((item) => {
-            const activo = item.key === 'noticias';
-            return (
-              <TouchableOpacity
-                key={item.key}
-                style={styles.tabItem}
-                onPress={() => router.replace(item.route)}
-              >
-                <Ionicons name={item.icon} size={22} color={activo ? primario : textoSuave} />
-                <Text style={[styles.tabLabel, activo && styles.tabLabelActive]}>
-                  {item.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+        <TabBar activa="noticias" />
       </View>
 
       {/* DETALLE */}
@@ -1102,19 +1079,4 @@ const crearEstilos = ({
       marginTop: 6,
     },
     detailNoteText: { flex: 1, color: texto, fontSize: 13, lineHeight: 19 },
-
-    // Tab bar
-    tabBar: {
-      flexDirection: 'row',
-      justifyContent: 'space-around',
-      alignItems: 'center',
-      width: '100%',
-      paddingTop: 12,
-      borderTopWidth: 1,
-      borderTopColor: borde,
-      backgroundColor: tarjeta,
-    },
-    tabItem: { flex: 1, alignItems: 'center', gap: 4 },
-    tabLabel: { fontSize: 12, color: textoSuave },
-    tabLabelActive: { color: primario, fontWeight: '600' },
   });

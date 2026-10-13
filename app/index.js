@@ -13,7 +13,7 @@ export default function Splash() {
 
       if (error) {
         console.error('Error al verificar la sesión:', error);
-        router.replace('/login');
+        router.replace('/login/bienvenida');
         return;
       }
 
@@ -22,11 +22,11 @@ export default function Splash() {
         router.replace('/home');
       } else {
         // No hay una sesión iniciada
-        router.replace('/login');
+        router.replace('/login/bienvenida');
       }
     } catch (error) {
       console.error('Error al comprobar la sesión:', error);
-      router.replace('/login');
+      router.replace('/login/bienvenida');
     }
   }, [router]);
 
