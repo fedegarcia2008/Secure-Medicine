@@ -1,14 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  Modal,
-  StyleSheet,
-  Image,
-  ScrollView,
-  ActivityIndicator,
-} from 'react-native';
+import {View,Text,TouchableOpacity,Modal,StyleSheet,Image,ScrollView,ActivityIndicator,} from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
@@ -20,8 +11,6 @@ import { supabase } from '../../services/Supabase';
 import { useColores, useEstilos } from '../../context/ColorContext';
 
 const logoApp = require('../../assets/images/Secure Medicine.png');
-
-//ERROR EN TAMAÑO DE LETRA EN ESTA PANTALLA HOME
 
 function formatearFecha(fecha) {
   return `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}-${String(fecha.getDate()).padStart(2, '0')}`;
@@ -46,7 +35,6 @@ const obtenerSemana = (fechaRefStr) => {
       fechaCompleta: formatearFecha(fecha),
     });
   }
-
   return dias;
 };
 
@@ -67,8 +55,7 @@ const obtenerTituloFecha = (fechaStr) => {
   ];
 
   const mesesNombresCortos = [
-    'Ene.', 'Feb.', 'Mar.', 'Abr.', 'May.', 'Jun.',
-    'Jul.', 'Ago.', 'Sep.', 'Oct.', 'Nov.', 'Dic.',
+    'Ene.', 'Feb.', 'Mar.', 'Abr.', 'May.', 'Jun.', 'Jul.', 'Ago.', 'Sep.', 'Oct.', 'Nov.', 'Dic.',
   ];
 
   return `${nombresDias[fecha.getDay()]}, ${day} ${mesesNombresCortos[fecha.getMonth()]}`;

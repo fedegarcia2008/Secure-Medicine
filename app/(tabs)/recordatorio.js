@@ -198,9 +198,8 @@ export default function Recordatorio() {
     configurarNotificaciones();
   }, []);
 
-  // =========================================================
   // PROGRAMAR NOTIFICACIONES EN ANDROID E IOS
-  // =========================================================
+
   const programarNotificaciones = async () => {
     try {
       const NotificationsModule = await import(
@@ -302,9 +301,8 @@ export default function Recordatorio() {
     }
   };
 
-  // =========================================================
   // HORA
-  // =========================================================
+  
   const confirmarHora = () => {
     const limpio = horaTemp.replace(/[^0-9:]/g, '');
 
@@ -366,9 +364,8 @@ export default function Recordatorio() {
       : String(n).replace('.', ',');
   };
 
-  // =========================================================
   // LIMITE DE DOSIS
-  // =========================================================
+ 
   const confirmarLimite = () => {
     const n = parseInt(limiteTemp, 10);
 
@@ -385,9 +382,9 @@ export default function Recordatorio() {
     setLimiteVisible(false);
   };
 
-  // =========================================================
+ 
   // GUARDAR MEDICAMENTO
-  // =========================================================
+
   const handleSiguiente = async () => {
     if (guardando) return;
 
