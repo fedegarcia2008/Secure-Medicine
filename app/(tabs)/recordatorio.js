@@ -135,9 +135,9 @@ export default function Recordatorio() {
     );
   };
 
-  // =========================================================
+  
   // CONFIGURAR NOTIFICACIONES EN ANDROID E IOS
-  // =========================================================
+  
   useEffect(() => {
     const configurarNotificaciones = async () => {
       try {
@@ -145,7 +145,7 @@ export default function Recordatorio() {
           'expo-notifications'
         );
 
-        // Define cómo se muestran las notificaciones.
+        
         NotificationsModule.setNotificationHandler({
           handleNotification: async () => ({
             shouldShowAlert: true,
@@ -154,7 +154,7 @@ export default function Recordatorio() {
           }),
         });
 
-        // Android necesita un canal de notificaciones.
+        
         if (Platform.OS === 'android') {
           await NotificationsModule.setNotificationChannelAsync(
             'medicamentos',
@@ -168,13 +168,13 @@ export default function Recordatorio() {
           );
         }
 
-        // Consultar permisos actuales.
+        
         const { status: estadoActual } =
           await NotificationsModule.getPermissionsAsync();
 
         let estadoFinal = estadoActual;
 
-        // Solicitar permiso si todavía no está concedido.
+        
         if (estadoActual !== 'granted') {
           const { status } =
             await NotificationsModule.requestPermissionsAsync();
@@ -206,7 +206,7 @@ export default function Recordatorio() {
         'expo-notifications'
       );
 
-      // Comprobar que los permisos estén habilitados.
+      
       const { status } =
         await NotificationsModule.getPermissionsAsync();
 
@@ -243,7 +243,7 @@ export default function Recordatorio() {
         const hh = horario.hour;
         const mm = horario.minute;
 
-        // Programar el aviso para el horario correspondiente.
+        
         const id =
           await NotificationsModule.scheduleNotificationAsync({
             content: {
@@ -257,7 +257,7 @@ export default function Recordatorio() {
 
               sound: 'default',
 
-              // Android utiliza el canal configurado anteriormente.
+              
               ...(Platform.OS === 'android' && {
                 channelId: 'medicamentos',
               }),
@@ -338,9 +338,9 @@ export default function Recordatorio() {
     }
   };
 
-  // =========================================================
+  
   // DOSIS
-  // =========================================================
+ 
   const confirmarDosis = () => {
     const n = parseFloat(
       dosisTemp.replace(',', '.')
@@ -623,7 +623,7 @@ export default function Recordatorio() {
         </Pressable>
       </View>
 
-      {/* MODAL CALENDARIO */}
+      {/* CALENDARIO */}
       <Modal
         visible={calendarioVisible}
         transparent
@@ -721,7 +721,7 @@ export default function Recordatorio() {
         </Pressable>
       </Modal>
 
-      {/* MODAL HORA */}
+      {/* HORA */}
       <Modal
         visible={horaVisible}
         transparent

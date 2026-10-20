@@ -136,6 +136,52 @@ function obtenerEstadoVentana(horaToma) {
   };
 }
 
+async function verificarYLimitarMedicamento(med) {
+  try {
+    const idMed = med.id;
+    if (!idMed) return false;
+
+    const allKeys = await AsyncStorage.getAllKeys();
+    const progresoKeys = allKeys.filter(key => key.startsWith('@progreso_'));
+    
+    if (progresoKeys.length === 0) return false;
+
+    const stores = await AsyncStorage.multiGet(progresoKeys);
+    
+    let totalConsumido = 0;
+    const dosisPorToma = Number(med.dosis) || 1;
+
+    stores.forEach(([key, value]) => {
+      if (!value) return;
+      try {
+        const data = JSON.parse(value);
+        Object.keys(data).forEach(tomaKey => {
+          if (tomaKey.startsWith(`${idMed}_`) && data[tomaKey] === true) {
+            totalConsumido += dosisPorToma;
+          }
+        });
+      } catch (e) {}
+    });
+
+    const limite = Number(med.limite_dosis) || 30;
+
+    if (totalConsumido >= limite) {
+      const { error } = await supabase
+        .from('medicamentos')
+        .update({ en_tratamiento: false })
+        .eq('id', idMed);
+
+      if (error) {
+        console.log('Error actualizando en_tratamiento:', error.message);
+      }
+      return true;
+    }
+  } catch (error) {
+    console.log('Error verificando límite de dosis:', error);
+  }
+  return false;
+}
+
 export default function Progreso() {
   const { primario } = useColores();
   const styles = useEstilos(crearEstilos);
@@ -167,8 +213,17 @@ export default function Progreso() {
           'Error cargando medicamentos:',
           medsError.message
         );
+        setMedicamentos([]);
       } else {
-        setMedicamentos(medsData || []);
+        const meds = medsData || [];
+        const medsActivos = [];
+        for (const med of meds) {
+          const alcanzo = await verificarYLimitarMedicamento(med);
+          if (!alcanzo) {
+            medsActivos.push(med);
+          }
+        }
+        setMedicamentos(medsActivos);
       }
 
       const datosTomas = await AsyncStorage.getItem(getClaveHoy());
@@ -223,6 +278,21 @@ export default function Progreso() {
         getClaveHoy(),
         JSON.stringify(nuevasTomas)
       );
+
+      if (nuevoEstado) {
+        const medEncontrado = medicamentos.find(m => m.id === idMed);
+        if (medEncontrado) {
+          const alcanzoLimite = await verificarYLimitarMedicamento(medEncontrado);
+          if (alcanzoLimite) {
+            Alert.alert(
+              '¡Tratamiento finalizado!',
+              `Has alcanzado el límite de dosis de "${medEncontrado.nombre}". El medicamento ha finalizado y ya no aparecerá en tus pantallas ni en el calendario.`
+            );
+            cargarDatos();
+            return;
+          }
+        }
+      }
     } catch (error) {
       console.log('Error guardando la toma:', error);
 
@@ -280,7 +350,6 @@ export default function Progreso() {
         diferencia -= 1440;
       }
 
-      // Oculta las tomas que ya vencieron.
       return diferencia <= 60;
     })
     .sort((a, b) => {

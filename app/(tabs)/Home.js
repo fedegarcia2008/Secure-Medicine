@@ -134,13 +134,11 @@ function calcularHorariosDelDia(horaInicio, frecuencia, frecuenciaHoras) {
   return horarios;
 }
 
-// Usa el mismo criterio de Progreso: oculta tomas cuyo horario pasó hace más de una hora.
 function obtenerDiferenciaMinutos(horaToma, fechaStr) {
   const minutosToma = convertirHoraAMinutos(horaToma);
 
   if (minutosToma === null) return null;
 
-  // Para una fecha anterior o futura, no aplicamos la hora actual a ese día.
   const hoy = formatearFecha(new Date());
 
   if (fechaStr !== hoy) return null;
@@ -157,7 +155,6 @@ function obtenerDiferenciaMinutos(horaToma, fechaStr) {
 }
 
 function debeMostrarToma(horaToma, fechaStr) {
-  // En días distintos de hoy se muestran todas las tomas del día seleccionado.
   if (fechaStr !== formatearFecha(new Date())) return true;
 
   const diferencia = obtenerDiferenciaMinutos(horaToma, fechaStr);
@@ -165,6 +162,52 @@ function debeMostrarToma(horaToma, fechaStr) {
   if (diferencia === null) return false;
 
   return diferencia <= 60;
+}
+
+async function verificarYLimitarMedicamento(med) {
+  try {
+    const idMed = med.id;
+    if (!idMed) return false;
+
+    const allKeys = await AsyncStorage.getAllKeys();
+    const progresoKeys = allKeys.filter(key => key.startsWith('@progreso_'));
+    
+    if (progresoKeys.length === 0) return false;
+
+    const stores = await AsyncStorage.multiGet(progresoKeys);
+    
+    let totalConsumido = 0;
+    const dosisPorToma = Number(med.dosis) || 1;
+
+    stores.forEach(([key, value]) => {
+      if (!value) return;
+      try {
+        const data = JSON.parse(value);
+        Object.keys(data).forEach(tomaKey => {
+          if (tomaKey.startsWith(`${idMed}_`) && data[tomaKey] === true) {
+            totalConsumido += dosisPorToma;
+          }
+        });
+      } catch (e) {}
+    });
+
+    const limite = Number(med.limite_dosis) || 30;
+
+    if (totalConsumido >= limite) {
+      const { error } = await supabase
+        .from('medicamentos')
+        .update({ en_tratamiento: false })
+        .eq('id', idMed);
+
+      if (error) {
+        console.log('Error actualizando en_tratamiento:', error.message);
+      }
+      return true;
+    }
+  } catch (error) {
+    console.log('Error verificando límite de dosis:', error);
+  }
+  return false;
 }
 
 export default function HoyScreen() {
@@ -245,7 +288,15 @@ export default function HoyScreen() {
 
         setMedicamentos([]);
       } else {
-        setMedicamentos(medsData || []);
+        const meds = medsData || [];
+        const medsActivos = [];
+        for (const med of meds) {
+          const alcanzo = await verificarYLimitarMedicamento(med);
+          if (!alcanzo) {
+            medsActivos.push(med);
+          }
+        }
+        setMedicamentos(medsActivos);
       }
 
       const datosTomas = await AsyncStorage.getItem(
@@ -281,7 +332,6 @@ export default function HoyScreen() {
     setMostrarCalendario(false);
   };
 
-  // Armamos las tomas y usamos el mismo formato de clave que Progreso.
   const listaMedicamentos = medicamentos
     .map((med, medIndex) => {
       const idMed = med.id || `${med.nombre}-${medIndex}`;
