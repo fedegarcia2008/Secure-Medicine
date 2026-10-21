@@ -1,5 +1,8 @@
 import { Platform } from 'react-native';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
+// AJUSTÁ esta ruta si tu archivo Supabase está en otro lugar.
+// Si notificaciones.js y Supabase.js están en la misma carpeta (services), queda así:
+import { supabase } from './Supabase';
 
 const CANAL_ID = 'medicamentos';
 
@@ -107,6 +110,43 @@ export async function configurarNotificaciones() {
   } catch (error) {
     console.log('Error configurando notificaciones:', error);
     return false;
+  }
+}
+
+// NUEVO: guarda el token de push de este celular en la tabla push_tokens.
+// Así otra persona (que te supervisa) puede mandarte un aviso.
+export async function registrarPushToken(userId) {
+  try {
+    const Notifications = await cargarNotifications();
+    if (!Notifications) return null;
+
+    const { status } = await Notifications.getPermissionsAsync();
+    if (status !== 'granted') return null;
+
+    const projectId =
+      Constants.expoConfig?.extra?.eas?.projectId ??
+      Constants.easConfig?.projectId;
+
+    const { data: token } = await Notifications.getExpoPushTokenAsync(
+      projectId ? { projectId } : undefined
+    );
+
+    const { error } = await supabase.from('push_tokens').upsert({
+      perfil_id: userId,
+      token,
+      actualizado_en: new Date().toISOString(),
+    });
+
+    if (error) {
+      console.log('Error guardando push token:', error.message);
+      return null;
+    }
+
+    console.log('Push token registrado.');
+    return token;
+  } catch (error) {
+    console.log('Error registrando push token:', error);
+    return null;
   }
 }
 

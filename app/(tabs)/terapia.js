@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   TouchableOpacity,
@@ -16,6 +16,13 @@ import { supabase } from '../../services/Supabase';
 import Text from '../../components/Texto';
 import TabBar, { TAB_BAR_HEIGHT } from '../../components/TabBar';
 import { useColores, useEstilos } from '../../context/ColorContext';
+// AJUSTÁ esta ruta si tu notificaciones.js está en otra carpeta
+import {
+  FRECUENCIA_A_HORAS,
+  calcularHorariosDelDia,
+  configurarNotificaciones,
+  registrarPushToken,
+} from '../../services/Notificaciones';
 
 const MESES = [
   'Enero',
@@ -40,6 +47,44 @@ function formatearFecha(fecha) {
   if (isNaN(date.getTime())) return 'Sin fecha';
 
   return `${date.getDate()} de ${MESES[date.getMonth()]} de ${date.getFullYear()}`;
+}
+
+// ---------- Helpers de tomas ----------
+
+const pad = (n) => String(n).padStart(2, '0');
+
+function fechaHoy() {
+  const d = new Date();
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function horaAhora() {
+  const d = new Date();
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+// ¿El tratamiento ya empezó? (si no hay fecha, se considera que sí)
+function yaInicio(med) {
+  if (!med.fecha_inicio) return true;
+  const inicio = new Date(med.fecha_inicio);
+  if (isNaN(inicio.getTime())) return true;
+  return inicio <= new Date();
+}
+
+// Devuelve los horarios del día de un medicamento, ej: ['00:00', '08:00', '16:00']
+function horariosDeMed(med) {
+  if (!med.hora || !med.hora.includes(':')) return [];
+
+  const [hh, mm] = med.hora.split(':').map(Number);
+  const intervalo = med.frecuencia_horas || FRECUENCIA_A_HORAS[med.frecuencia];
+
+  const lista = intervalo
+    ? calcularHorariosDelDia(med.hora, intervalo)
+    : [{ hour: hh, minute: mm }];
+
+  return lista
+    .map(({ hour, minute }) => `${pad(hour)}:${pad(minute)}`)
+    .sort();
 }
 
 function InfoRow({ icon, label, value, last }) {
@@ -74,6 +119,30 @@ export default function Terapia() {
   const [modalEnlazarVisible, setModalEnlazarVisible] = useState(false);
   const [codigoIngresado, setCodigoIngresado] = useState('');
   const [procesandoEnlace, setProcesandoEnlace] = useState(false);
+
+  // NUEVO: tomas de hoy y estado del botón Avisar
+  const [tomasHoy, setTomasHoy] = useState([]);
+  const [avisando, setAvisando] = useState(false);
+
+  // NUEVO: al abrir la pantalla, pide permiso y guarda el token de este celular
+  useEffect(() => {
+    const registrar = async () => {
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        if (!user) return;
+
+        const ok = await configurarNotificaciones();
+        if (ok) await registrarPushToken(user.id);
+      } catch (error) {
+        console.log('Error registrando notificaciones:', error);
+      }
+    };
+
+    registrar();
+  }, []);
 
   const cargarDatos = async () => {
     setCargando(true);
@@ -120,6 +189,20 @@ export default function Terapia() {
       } else {
         setMedicamentos(medsData || []);
       }
+
+      // NUEVO: tomas registradas hoy
+      const { data: tomasData, error: tomasErr } = await supabase
+        .from('tomas')
+        .select('id, medicamento_id, hora')
+        .eq('perfil_id', idAConsultar)
+        .eq('fecha', fechaHoy());
+
+      if (tomasErr) {
+        console.log('Error cargando tomas:', tomasErr.message);
+        setTomasHoy([]);
+      } else {
+        setTomasHoy(tomasData || []);
+      }
     } catch (error) {
       console.log('Error en cargarDatos:', error);
     } finally {
@@ -132,6 +215,113 @@ export default function Terapia() {
       cargarDatos();
     }, [cuentaSeleccionada])
   );
+
+  // ---------- NUEVO: lógica de tomas ----------
+
+  // 'tomada' | 'pendiente' (la hora ya pasó y no se marcó) | 'proxima'
+  const estadoToma = (med, hora) => {
+    const tomada = tomasHoy.find(
+      (t) => t.medicamento_id === med.id && t.hora === hora
+    );
+
+    if (tomada) return 'tomada';
+    if (!yaInicio(med)) return 'proxima';
+
+    return hora <= horaAhora() ? 'pendiente' : 'proxima';
+  };
+
+  // Todas las tomas atrasadas sin registrar
+  const pendientes = medicamentos.flatMap((m) =>
+    horariosDeMed(m)
+      .filter((h) => estadoToma(m, h) === 'pendiente')
+      .map((h) => ({ med: m, hora: h }))
+  );
+
+  // Marca / desmarca una toma (solo en la cuenta propia)
+  const alternarToma = async (med, hora) => {
+    try {
+      const existente = tomasHoy.find(
+        (t) => t.medicamento_id === med.id && t.hora === hora
+      );
+
+      if (existente) {
+        const { error } = await supabase
+          .from('tomas')
+          .delete()
+          .eq('id', existente.id);
+
+        if (error) {
+          Alert.alert('Error', 'No se pudo desmarcar la toma.');
+          return;
+        }
+
+        setTomasHoy((prev) => prev.filter((t) => t.id !== existente.id));
+        return;
+      }
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('tomas')
+        .insert({
+          medicamento_id: med.id,
+          perfil_id: user.id,
+          fecha: fechaHoy(),
+          hora,
+        })
+        .select('id, medicamento_id, hora')
+        .single();
+
+      if (error) {
+        Alert.alert('Error', 'No se pudo registrar la toma.');
+        return;
+      }
+
+      setTomasHoy((prev) => [...prev, data]);
+    } catch (error) {
+      Alert.alert('Error', 'No se pudo actualizar la toma.');
+    }
+  };
+
+  // Manda la notificación a la persona supervisada
+  const avisarPersona = async () => {
+    setAvisando(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('avisar-toma', {
+        body: {
+          observado_id: cuentaSeleccionada,
+          pendientes: pendientes.map((p) => `${p.med.nombre} (${p.hora})`),
+        },
+      });
+
+      if (error) {
+        Alert.alert('Error', 'No se pudo enviar el aviso.');
+      } else if (data?.error === 'sin_token') {
+        Alert.alert(
+          'No se pudo avisar',
+          'La otra persona todavía no activó las notificaciones en su celular. Pedile que abra la app y acepte los permisos.'
+        );
+      } else if (data?.error) {
+        Alert.alert('Error', 'No se pudo enviar el aviso.');
+      } else {
+        Alert.alert(
+          'Aviso enviado',
+          'Le llegó una notificación para que tome sus medicamentos.'
+        );
+      }
+    } catch (e) {
+      Alert.alert('Error', 'No se pudo enviar el aviso.');
+    } finally {
+      setAvisando(false);
+    }
+  };
+
+  // ---------- Fin lógica de tomas ----------
 
   const eliminarMedicamento = async (idMedicamento, nombreMed) => {
     try {
@@ -453,6 +643,57 @@ export default function Terapia() {
               : 'Estás consultando la terapia de tu familiar o cuenta enlazada.'}
           </Text>
 
+          {/* NUEVO: aviso de tomas pendientes (solo al mirar otra cuenta) */}
+          {cuentaSeleccionada !== 'mía' &&
+            !cargando &&
+            medicamentos.length > 0 &&
+            (pendientes.length > 0 ? (
+              <View style={styles.alertCard}>
+                <Ionicons
+                  name="alert-circle-outline"
+                  size={22}
+                  color="#E53935"
+                />
+
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.alertTitle}>
+                    {pendientes.length} toma(s) sin registrar hoy
+                  </Text>
+
+                  <Text style={styles.alertText}>
+                    {pendientes
+                      .map((p) => `${p.med.nombre} ${p.hora}`)
+                      .join(' · ')}
+                  </Text>
+                </View>
+
+                <TouchableOpacity
+                  style={styles.alertButton}
+                  onPress={avisarPersona}
+                  disabled={avisando}
+                  activeOpacity={0.8}
+                >
+                  {avisando ? (
+                    <ActivityIndicator color="#FFF" size="small" />
+                  ) : (
+                    <Text style={styles.alertButtonText}>Avisar</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={styles.okCard}>
+                <Ionicons
+                  name="checkmark-circle-outline"
+                  size={22}
+                  color="#2E7D32"
+                />
+
+                <Text style={styles.okText}>
+                  Todas las tomas de hoy al día ✅
+                </Text>
+              </View>
+            ))}
+
           {cargando ? (
             <ActivityIndicator
               size="large"
@@ -547,6 +788,55 @@ export default function Terapia() {
                   value={formatearFecha(med.fecha_inicio)}
                   last
                 />
+
+                {/* NUEVO: tomas de hoy */}
+                <View style={styles.separador} />
+
+                <Text style={styles.tomasTitle}>
+                  {cuentaSeleccionada === 'mía'
+                    ? 'Tomas de hoy (tocá para marcar)'
+                    : 'Tomas de hoy'}
+                </Text>
+
+                <View style={styles.tomasRow}>
+                  {horariosDeMed(med).map((hora) => {
+                    const estado = estadoToma(med, hora);
+                    const esMia = cuentaSeleccionada === 'mía';
+
+                    return (
+                      <TouchableOpacity
+                        key={hora}
+                        disabled={!esMia}
+                        onPress={() => alternarToma(med, hora)}
+                        activeOpacity={0.7}
+                        style={[
+                          styles.tomaChip,
+                          estado === 'tomada' && styles.tomaChipOk,
+                          estado === 'pendiente' &&
+                            styles.tomaChipPendiente,
+                        ]}
+                      >
+                        <Ionicons
+                          name={
+                            estado === 'tomada'
+                              ? 'checkmark-circle'
+                              : 'time-outline'
+                          }
+                          size={16}
+                          color={
+                            estado === 'tomada'
+                              ? '#2E7D32'
+                              : estado === 'pendiente'
+                              ? '#E53935'
+                              : textoSuave
+                          }
+                        />
+
+                        <Text style={styles.tomaChipText}>{hora}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
               </View>
             ))
           )}
@@ -940,5 +1230,87 @@ const crearEstilos = ({ primario, primarioSuave, fondo, tarjeta, texto, textoMed
   btnConfirmText: {
     color: '#FFF',
     fontWeight: '700',
+  },
+
+  // ---------- NUEVOS estilos (tomas y aviso) ----------
+  alertCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: peligroSuave,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 16,
+  },
+  alertTitle: {
+    color: texto,
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  alertText: {
+    color: textoSuave,
+    fontSize: 12,
+    marginTop: 2,
+  },
+  alertButton: {
+    backgroundColor: '#E53935',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 14,
+    minWidth: 70,
+    alignItems: 'center',
+  },
+  alertButtonText: {
+    color: '#FFF',
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  okCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: primarioSuave,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 16,
+  },
+  okText: {
+    color: texto,
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  tomasTitle: {
+    color: textoSuave,
+    fontSize: 13,
+    marginBottom: 10,
+  },
+  tomasRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  tomaChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 14,
+    backgroundColor: fondoSecundario,
+    borderWidth: 1,
+    borderColor: borde,
+  },
+  tomaChipOk: {
+    backgroundColor: '#E8F5E9',
+    borderColor: '#A5D6A7',
+  },
+  tomaChipPendiente: {
+    backgroundColor: peligroSuave,
+    borderColor: '#EF9A9A',
+  },
+  tomaChipText: {
+    color: texto,
+    fontWeight: '600',
+    fontSize: 13,
   },
 });
