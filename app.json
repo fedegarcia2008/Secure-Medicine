@@ -38,7 +38,13 @@
       "expo-status-bar",
       "expo-web-browser",
       "@react-native-community/datetimepicker",
-      "expo-asset"
+      "expo-asset",
+      [
+        "expo-notifications",
+        {
+          "color": "#4CAF50"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

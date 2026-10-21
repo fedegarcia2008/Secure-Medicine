@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -15,8 +15,9 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { supabase } from '../../services/Supabase';
+import Avatar, { AVATAR_POR_DEFECTO } from '../../components/Avatar';
 
 const PRIMARY = '#4caf50';
 
@@ -121,6 +122,9 @@ export default function InformacionPersonal() {
   const [sexo, setSexo] = useState(null);
   const [anio, setAnio] = useState(null);
 
+  const [avatarAnimal, setAvatarAnimal] = useState(AVATAR_POR_DEFECTO.animal);
+  const [avatarColor, setAvatarColor] = useState(AVATAR_POR_DEFECTO.color);
+
   const [original, setOriginal] = useState({
     apodo: '',
     email: '',
@@ -149,7 +153,9 @@ export default function InformacionPersonal() {
 
         const { data: perfil, error } = await supabase
           .from('perfiles')
-          .select('apodo, codigo, sexo, anio_nacimiento')
+          .select(
+            'apodo, codigo, sexo, anio_nacimiento, avatar_animal, avatar_color'
+          )
           .eq('id', user.id)
           .single();
 
@@ -169,6 +175,8 @@ export default function InformacionPersonal() {
         setSexo(datos.sexo);
         setAnio(datos.anio);
         setCodigo(perfil?.codigo || '');
+        setAvatarAnimal(perfil?.avatar_animal || AVATAR_POR_DEFECTO.animal);
+        setAvatarColor(perfil?.avatar_color || AVATAR_POR_DEFECTO.color);
         setOriginal(datos);
       } catch (error) {
         console.log('Error en cargarPerfil:', error);
@@ -179,6 +187,35 @@ export default function InformacionPersonal() {
 
     cargarPerfil();
   }, []);
+
+  // Al volver de CrearAvatar, refresca solo el avatar
+  // (así no se pisan los datos que el usuario esté editando en esta pantalla).
+  useFocusEffect(
+    useCallback(() => {
+      if (!userId) return;
+
+      let activo = true;
+
+      const refrescarAvatar = async () => {
+        const { data: perfil } = await supabase
+          .from('perfiles')
+          .select('avatar_animal, avatar_color')
+          .eq('id', userId)
+          .single();
+
+        if (!activo || !perfil) return;
+
+        setAvatarAnimal(perfil.avatar_animal || AVATAR_POR_DEFECTO.animal);
+        setAvatarColor(perfil.avatar_color || AVATAR_POR_DEFECTO.color);
+      };
+
+      refrescarAvatar();
+
+      return () => {
+        activo = false;
+      };
+    }, [userId])
+  );
 
   const hayCambios =
     apodo.trim() !== original.apodo ||
@@ -324,9 +361,21 @@ export default function InformacionPersonal() {
           ) : (
             <>
               <View style={styles.avatarBlock}>
-                <View style={styles.avatar}>
-                  <Ionicons name="person-outline" size={44} color={PRIMARY} />
-                </View>
+                <TouchableOpacity
+                  style={styles.avatarWrapper}
+                  onPress={() => router.push('/configuracion/crear-avatar')}
+                  activeOpacity={0.8}
+                >
+                  <Avatar
+                    animal={avatarAnimal}
+                    color={avatarColor}
+                    size={92}
+                    style={styles.avatarBorde}
+                  />
+                  <View style={styles.editBadge}>
+                    <Ionicons name="pencil" size={13} color="#FFFFFF" />
+                  </View>
+                </TouchableOpacity>
 
                 <Text style={styles.avatarTitle}>Detalles del perfil</Text>
 
@@ -537,15 +586,26 @@ const styles = StyleSheet.create({
     marginTop: 24,
     marginBottom: 24,
   },
-  avatar: {
+  avatarWrapper: {
     width: 92,
     height: 92,
-    borderRadius: 46,
-    backgroundColor: '#EAF7EB',
-    justifyContent: 'center',
-    alignItems: 'center',
+  },
+  avatarBorde: {
     borderWidth: 2,
     borderColor: PRIMARY,
+  },
+  editBadge: {
+    position: 'absolute',
+    right: -2,
+    bottom: -2,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: PRIMARY,
+    borderWidth: 2,
+    borderColor: '#F8F9FA',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   avatarTitle: {
     color: '#1A1D1E',

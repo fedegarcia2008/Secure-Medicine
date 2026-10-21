@@ -1,4 +1,3 @@
-
 import { useEffect, useMemo, useState } from 'react';
 import {
   View,
@@ -8,12 +7,17 @@ import {
   ScrollView,
   Modal,
   TextInput,
-  Platform,
   Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../services/Supabase';
+import {
+  FRECUENCIA_A_HORAS,
+  formatearDosis,
+  configurarNotificaciones,
+  programarNotificaciones,
+} from '../../services/Notificaciones';
 
 const PRIMARY = '#4CAF50';
 
@@ -24,16 +28,6 @@ const MESES = [
   'Mayo', 'Junio', 'Julio', 'Agosto',
   'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
 ];
-
-const FRECUENCIA_A_HORAS = {
-  'Cada 4 horas': 4,
-  'Cada 6 horas': 6,
-  'Cada 8 horas': 8,
-  'Cada 12 horas': 12,
-  'Una vez al día': 24,
-  'Dos veces al día': 12,
-  'Tres veces al día': 8,
-};
 
 function formatearFecha(date) {
   const hoy = new Date();
@@ -67,33 +61,6 @@ function generarDiasDelMes(mesRef) {
   }
 
   return dias;
-}
-
-// Calcula los horarios del día según la frecuencia.
-function calcularHorariosDelDia(horaInicio, intervaloHoras) {
-  const [hh, mm] = horaInicio.split(':').map(Number);
-
-  const minutoInicio = hh * 60 + mm;
-  const intervaloMinutos = intervaloHoras * 60;
-
-  const cantidadTomas = Math.max(
-    1,
-    Math.round((24 * 60) / intervaloMinutos)
-  );
-
-  const horarios = [];
-
-  for (let i = 0; i < cantidadTomas; i++) {
-    const totalMinutos =
-      (minutoInicio + i * intervaloMinutos) % (24 * 60);
-
-    horarios.push({
-      hour: Math.floor(totalMinutos / 60),
-      minute: totalMinutos % 60,
-    });
-  }
-
-  return horarios;
 }
 
 export default function Recordatorio() {
@@ -135,174 +102,13 @@ export default function Recordatorio() {
     );
   };
 
-  
-  // CONFIGURAR NOTIFICACIONES EN ANDROID E IOS
-  
+  // CONFIGURAR NOTIFICACIONES (permisos, canal, handler)
   useEffect(() => {
-    const configurarNotificaciones = async () => {
-      try {
-        const NotificationsModule = await import(
-          'expo-notifications'
-        );
-
-        
-        NotificationsModule.setNotificationHandler({
-          handleNotification: async () => ({
-            shouldShowAlert: true,
-            shouldPlaySound: true,
-            shouldSetBadge: false,
-          }),
-        });
-
-        
-        if (Platform.OS === 'android') {
-          await NotificationsModule.setNotificationChannelAsync(
-            'medicamentos',
-            {
-              name: 'Recordatorios de medicamentos',
-              importance:
-                NotificationsModule.AndroidImportance.MAX,
-              vibrationPattern: [0, 250, 250, 250],
-              sound: 'default',
-            }
-          );
-        }
-
-        
-        const { status: estadoActual } =
-          await NotificationsModule.getPermissionsAsync();
-
-        let estadoFinal = estadoActual;
-
-        
-        if (estadoActual !== 'granted') {
-          const { status } =
-            await NotificationsModule.requestPermissionsAsync();
-
-          estadoFinal = status;
-        }
-
-        if (estadoFinal === 'granted') {
-          console.log('Notificaciones habilitadas.');
-        } else {
-          console.log('Permiso de notificaciones denegado.');
-        }
-      } catch (error) {
-        console.log(
-          'Error configurando notificaciones:',
-          error
-        );
-      }
-    };
-
     configurarNotificaciones();
   }, []);
 
-  // PROGRAMAR NOTIFICACIONES EN ANDROID E IOS
-
-  const programarNotificaciones = async () => {
-    try {
-      const NotificationsModule = await import(
-        'expo-notifications'
-      );
-
-      
-      const { status } =
-        await NotificationsModule.getPermissionsAsync();
-
-      if (status !== 'granted') {
-        console.log(
-          'No hay permiso para enviar notificaciones.'
-        );
-
-        return [];
-      }
-
-      const intervaloHoras =
-        FRECUENCIA_A_HORAS[frecuencia] || null;
-
-      let horarios;
-
-      if (intervaloHoras) {
-        horarios = calcularHorariosDelDia(
-          hora,
-          intervaloHoras
-        );
-      } else {
-        horarios = [
-          {
-            hour: Number(hora.split(':')[0]),
-            minute: Number(hora.split(':')[1]),
-          },
-        ];
-      }
-
-      const ids = [];
-
-      for (const horario of horarios) {
-        const hh = horario.hour;
-        const mm = horario.minute;
-
-        
-        const id =
-          await NotificationsModule.scheduleNotificationAsync({
-            content: {
-              title: 'Es hora de tu medicamento 💊',
-
-              body: `Tomá ${formatearDosis(
-                dosis
-              )} comprimido(s) de ${
-                nombre || 'tu medicamento'
-              }`,
-
-              sound: 'default',
-
-              
-              ...(Platform.OS === 'android' && {
-                channelId: 'medicamentos',
-              }),
-
-              data: {
-                nombre: nombre || 'Medicamento',
-
-                hora: `${String(hh).padStart(
-                  2,
-                  '0'
-                )}:${String(mm).padStart(2, '0')}`,
-              },
-            },
-
-            trigger: {
-              type:
-                NotificationsModule
-                  .SchedulableTriggerInputTypes
-                  .CALENDAR,
-
-              hour: hh,
-              minute: mm,
-
-              repeats: true,
-            },
-          });
-
-        ids.push(id);
-      }
-
-      console.log('Notificaciones programadas:', ids);
-
-      return ids;
-    } catch (error) {
-      console.log(
-        'Error programando notificaciones:',
-        error
-      );
-
-      return [];
-    }
-  };
-
   // HORA
-  
+
   const confirmarHora = () => {
     const limpio = horaTemp.replace(/[^0-9:]/g, '');
 
@@ -338,9 +144,8 @@ export default function Recordatorio() {
     }
   };
 
-  
   // DOSIS
- 
+
   const confirmarDosis = () => {
     const n = parseFloat(
       dosisTemp.replace(',', '.')
@@ -358,14 +163,8 @@ export default function Recordatorio() {
     setDosisVisible(false);
   };
 
-  const formatearDosis = (n) => {
-    return Number.isInteger(n)
-      ? String(n)
-      : String(n).replace('.', ',');
-  };
-
   // LIMITE DE DOSIS
- 
+
   const confirmarLimite = () => {
     const n = parseInt(limiteTemp, 10);
 
@@ -382,7 +181,6 @@ export default function Recordatorio() {
     setLimiteVisible(false);
   };
 
- 
   // GUARDAR MEDICAMENTO
 
   const handleSiguiente = async () => {
@@ -407,8 +205,7 @@ export default function Recordatorio() {
       }
 
       // Programar los recordatorios.
-      // Funciona en Android e iOS si los permisos están concedidos.
-      await programarNotificaciones();
+      await programarNotificaciones({ nombre, dosis, hora, frecuencia });
 
       // Calcular la frecuencia en horas.
       const horasCalc =
