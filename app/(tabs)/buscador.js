@@ -1,18 +1,22 @@
 import { useMemo, useState } from 'react';
-import { View, Text, TextInput, FlatList, Pressable, StyleSheet } from 'react-native';
+import { View, TextInput, FlatList, Pressable, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import Text from '../../components/Texto';
+import { useColores, useEstilos } from '../../context/ColorContext';
 import { medicamentos } from '../../data/medicamentos';
 
 export default function BuscarMedicamento() {
+  const { texto, textoSuave } = useColores();
+  const styles = useEstilos(crearEstilos);
   const router = useRouter();
   const [busqueda, setBusqueda] = useState('');
 
   const resultados = useMemo(() => {
-    const texto = busqueda.trim().toLowerCase();
-    if (!texto) return [];
+    const termino = busqueda.trim().toLowerCase();
+    if (!termino) return [];
     return medicamentos.filter((m) =>
-      m.nombre.toLowerCase().includes(texto)
+      m.nombre.toLowerCase().includes(termino)
     );
   }, [busqueda]);
 
@@ -26,13 +30,13 @@ export default function BuscarMedicamento() {
       {/* Header */}
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} hitSlop={10}>
-          <Ionicons name="arrow-back" size={24} color="#333" />
+          <Ionicons name="arrow-back" size={24} color={texto} />
         </Pressable>
 
         <TextInput
           style={styles.input}
           placeholder="Buscar medicamento"
-          placeholderTextColor="#999"
+          placeholderTextColor={textoSuave}
           value={busqueda}
           onChangeText={setBusqueda}
           autoFocus
@@ -40,11 +44,11 @@ export default function BuscarMedicamento() {
 
         {busqueda.length > 0 ? (
           <Pressable onPress={() => setBusqueda('')} hitSlop={10}>
-            <Ionicons name="close" size={24} color="#333" />
+            <Ionicons name="close" size={24} color={texto} />
           </Pressable>
         ) : (
           <Pressable onPress={() => router.back()} hitSlop={10}>
-            <Ionicons name="close" size={24} color="#333" />
+            <Ionicons name="close" size={24} color={texto} />
           </Pressable>
         )}
       </View>
@@ -55,7 +59,7 @@ export default function BuscarMedicamento() {
           <Text style={styles.emoji}>💊</Text>
           <Text style={styles.emptyText}>
             Escriba el nombre del medicamento, la vitamina o el suplemento que
-            desea agregar a Terapia
+            desea agregar a su terapia
           </Text>
         </View>
       ) : (
@@ -86,7 +90,7 @@ export default function BuscarMedicamento() {
                   <Text style={styles.resultCategoria}>{item.categoria}</Text>
                 ) : null}
               </View>
-              <Ionicons name="chevron-forward" size={20} color="#bbb" />
+              <Ionicons name="chevron-forward" size={20} color={textoSuave} />
             </Pressable>
           )}
         />
@@ -95,70 +99,80 @@ export default function BuscarMedicamento() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-    paddingTop: 55,
-    paddingHorizontal: 16,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  input: {
-    flex: 1,
-    fontSize: 17,
-    color: '#222',
-    paddingVertical: 6,
-  },
-  emptyState: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 30,
-    paddingTop: 60,
-  },
-  emoji: {
-    fontSize: 48,
-    marginBottom: 20,
-  },
-  emptyText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    textAlign: 'center',
-    lineHeight: 22,
-  },
-  resultCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f7f8fa',
-    padding: 14,
-    borderRadius: 12,
-    marginBottom: 10,
-    gap: 12,
-  },
-  resultIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#eef2ff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  resultNombre: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#222',
-  },
-  resultCategoria: {
-    fontSize: 13,
-    color: '#888',
-    marginTop: 2,
-  },
-});
+const crearEstilos = ({
+  primarioSuave,
+  fondo,
+  tarjeta,
+  texto,
+  textoSuave,
+  borde,
+}) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: fondo,
+      paddingTop: 55,
+      paddingHorizontal: 16,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      paddingBottom: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: borde,
+    },
+    input: {
+      flex: 1,
+      fontSize: 17,
+      color: texto,
+      paddingVertical: 6,
+    },
+    emptyState: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 30,
+      paddingTop: 60,
+    },
+    emoji: {
+      fontSize: 48,
+      marginBottom: 20,
+    },
+    emptyText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: texto,
+      textAlign: 'center',
+      lineHeight: 22,
+    },
+    resultCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: tarjeta,
+      borderWidth: 1,
+      borderColor: borde,
+      padding: 14,
+      borderRadius: 12,
+      marginBottom: 10,
+      gap: 12,
+    },
+    resultIcon: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: primarioSuave,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    resultNombre: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: texto,
+    },
+    resultCategoria: {
+      fontSize: 13,
+      color: textoSuave,
+      marginTop: 2,
+    },
+  });

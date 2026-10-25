@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
   View,
-  Text,
   TouchableOpacity,
   StyleSheet,
   ScrollView,
@@ -18,13 +17,16 @@ import Avatar, {
   COLORES_AVATAR,
   AVATAR_POR_DEFECTO,
 } from '../../components/Avatar';
+import Text from '../../components/Texto';
+import { useColores, useEstilos } from '../../context/ColorContext';
 
-const PRIMARY = '#4caf50';
 const PADDING = 20;
 const GAP = 12;
 const COLUMNAS = 4;
 
 export default function CrearAvatar() {
+  const { primario, texto, fondoSecundario } = useColores();
+  const styles = useEstilos(crearEstilos);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -106,7 +108,7 @@ export default function CrearAvatar() {
           onPress={() => router.back()}
           activeOpacity={0.7}
         >
-          <Ionicons name="arrow-back" size={24} color="#1A1D1E" />
+          <Ionicons name="arrow-back" size={24} color={texto} />
         </TouchableOpacity>
 
         <Text style={styles.headerTitle}>Crea tu avatar</Text>
@@ -118,7 +120,7 @@ export default function CrearAvatar() {
           activeOpacity={0.7}
         >
           {guardando ? (
-            <ActivityIndicator size="small" color={PRIMARY} />
+            <ActivityIndicator size="small" color={primario} />
           ) : (
             <Text
               style={[styles.guardar, !hayCambios && styles.guardarDisabled]}
@@ -132,7 +134,7 @@ export default function CrearAvatar() {
       {cargando ? (
         <ActivityIndicator
           size="large"
-          color={PRIMARY}
+          color={primario}
           style={{ marginTop: 40 }}
         />
       ) : (
@@ -189,7 +191,7 @@ export default function CrearAvatar() {
                 >
                   <Avatar
                     animal={a.id}
-                    fondo="#E9E9E9"
+                    fondo={fondoSecundario}
                     size={tamanoItem - 10}
                   />
                 </TouchableOpacity>
@@ -202,84 +204,85 @@ export default function CrearAvatar() {
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: PADDING,
-    height: 56,
-  },
-  headerSide: {
-    minWidth: 70,
-    justifyContent: 'center',
-  },
-  headerRight: {
-    alignItems: 'flex-end',
-  },
-  headerTitle: {
-    flex: 1,
-    color: '#1A1D1E',
-    fontSize: 18,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  guardar: {
-    color: PRIMARY,
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  guardarDisabled: {
-    opacity: 0.4,
-  },
-  preview: {
-    alignItems: 'center',
-    marginTop: 28,
-    marginBottom: 28,
-  },
-  coloresRow: {
-    paddingHorizontal: PADDING,
-    gap: 12,
-    paddingBottom: 18,
-  },
-  colorAnillo: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    borderWidth: 2,
-    borderColor: 'transparent',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  colorAnilloActivo: {
-    borderColor: PRIMARY,
-  },
-  colorCirculo: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-  },
-  divisor: {
-    height: 1,
-    backgroundColor: '#EEEEEE',
-    marginBottom: 18,
-  },
-  grilla: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: GAP,
-    paddingHorizontal: PADDING,
-  },
-  itemAnillo: {
-    borderWidth: 3,
-    borderColor: 'transparent',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  itemAnilloActivo: {
-    borderColor: PRIMARY,
-  },
-});
+const crearEstilos = ({ primario, fondo, texto, borde }) =>
+  StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: fondo,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: PADDING,
+      height: 56,
+    },
+    headerSide: {
+      minWidth: 70,
+      justifyContent: 'center',
+    },
+    headerRight: {
+      alignItems: 'flex-end',
+    },
+    headerTitle: {
+      flex: 1,
+      color: texto,
+      fontSize: 18,
+      fontWeight: '600',
+      textAlign: 'center',
+    },
+    guardar: {
+      color: primario,
+      fontSize: 16,
+      fontWeight: '700',
+    },
+    guardarDisabled: {
+      opacity: 0.4,
+    },
+    preview: {
+      alignItems: 'center',
+      marginTop: 28,
+      marginBottom: 28,
+    },
+    coloresRow: {
+      paddingHorizontal: PADDING,
+      gap: 12,
+      paddingBottom: 18,
+    },
+    colorAnillo: {
+      width: 46,
+      height: 46,
+      borderRadius: 23,
+      borderWidth: 2,
+      borderColor: 'transparent',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    colorAnilloActivo: {
+      borderColor: primario,
+    },
+    colorCirculo: {
+      width: 34,
+      height: 34,
+      borderRadius: 17,
+    },
+    divisor: {
+      height: 1,
+      backgroundColor: borde,
+      marginBottom: 18,
+    },
+    grilla: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: GAP,
+      paddingHorizontal: PADDING,
+    },
+    itemAnillo: {
+      borderWidth: 3,
+      borderColor: 'transparent',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    itemAnilloActivo: {
+      borderColor: primario,
+    },
+  });

@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
-  Text,
   TouchableOpacity,
   StyleSheet,
   ScrollView,
@@ -18,8 +17,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { supabase } from '../../services/Supabase';
 import Avatar, { AVATAR_POR_DEFECTO } from '../../components/Avatar';
-
-const PRIMARY = '#4caf50';
+import Text from '../../components/Texto';
+import { useColores, useEstilos } from '../../context/ColorContext';
 
 const OPCIONES_SEXO = ['Femenino', 'Masculino', 'Otro', 'Prefiero no decirlo'];
 
@@ -30,6 +29,7 @@ const ANIOS = Array.from(
 );
 
 function Campo({ label, children }) {
+  const styles = useEstilos(crearEstilos);
   return (
     <View style={styles.campo}>
       <Text style={styles.campoLabel}>{label}</Text>
@@ -39,6 +39,8 @@ function Campo({ label, children }) {
 }
 
 function CampoSelector({ label, valor, placeholder, onPress }) {
+  const { textoSuave } = useColores();
+  const styles = useEstilos(crearEstilos);
   return (
     <Campo label={label}>
       <TouchableOpacity
@@ -49,13 +51,15 @@ function CampoSelector({ label, valor, placeholder, onPress }) {
         <Text style={valor ? styles.inputTexto : styles.inputPlaceholder}>
           {valor || placeholder}
         </Text>
-        <Ionicons name="chevron-down" size={18} color="#6C757D" />
+        <Ionicons name="chevron-down" size={18} color={textoSuave} />
       </TouchableOpacity>
     </Campo>
   );
 }
 
 function SelectorModal({ visible, titulo, opciones, seleccionado, onSelect, onClose }) {
+  const { primario } = useColores();
+  const styles = useEstilos(crearEstilos);
   return (
     <Modal
       visible={visible}
@@ -95,7 +99,7 @@ function SelectorModal({ visible, titulo, opciones, seleccionado, onSelect, onCl
                   </Text>
 
                   {activo && (
-                    <Ionicons name="checkmark" size={20} color={PRIMARY} />
+                    <Ionicons name="checkmark" size={20} color={primario} />
                   )}
                 </TouchableOpacity>
               );
@@ -108,6 +112,8 @@ function SelectorModal({ visible, titulo, opciones, seleccionado, onSelect, onCl
 }
 
 export default function InformacionPersonal() {
+  const { texto, textoSuave, primario } = useColores();
+  const styles = useEstilos(crearEstilos);
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -262,10 +268,7 @@ export default function InformacionPersonal() {
         });
 
         if (emailErr) {
-          Alert.alert(
-            'No se pudo cambiar el email',
-            emailErr.message
-          );
+          Alert.alert('No se pudo cambiar el email', emailErr.message);
           setOriginal({ ...original, apodo: apodoLimpio, sexo, anio });
           return;
         }
@@ -347,7 +350,7 @@ export default function InformacionPersonal() {
             onPress={() => router.back()}
             activeOpacity={0.7}
           >
-            <Ionicons name="arrow-back" size={22} color="#1A1D1E" />
+            <Ionicons name="arrow-back" size={22} color={texto} />
           </TouchableOpacity>
 
           <Text style={styles.title}>Información personal</Text>
@@ -355,7 +358,7 @@ export default function InformacionPersonal() {
           {cargando ? (
             <ActivityIndicator
               size="large"
-              color={PRIMARY}
+              color={primario}
               style={{ marginTop: 40 }}
             />
           ) : (
@@ -391,7 +394,7 @@ export default function InformacionPersonal() {
                     value={apodo}
                     onChangeText={setApodo}
                     placeholder="¿Cómo te llamamos?"
-                    placeholderTextColor="#999"
+                    placeholderTextColor={textoSuave}
                     maxLength={30}
                   />
                 </Campo>
@@ -402,7 +405,7 @@ export default function InformacionPersonal() {
                     value={email}
                     onChangeText={setEmail}
                     placeholder="tu@email.com"
-                    placeholderTextColor="#999"
+                    placeholderTextColor={textoSuave}
                     keyboardType="email-address"
                     autoCapitalize="none"
                     autoCorrect={false}
@@ -452,7 +455,7 @@ export default function InformacionPersonal() {
                     <Ionicons
                       name="lock-closed-outline"
                       size={20}
-                      color={PRIMARY}
+                      color={primario}
                     />
                   </View>
 
@@ -461,7 +464,7 @@ export default function InformacionPersonal() {
                   <Ionicons
                     name="chevron-forward"
                     size={20}
-                    color="#6C757D"
+                    color={textoSuave}
                   />
                 </TouchableOpacity>
               </View>
@@ -511,7 +514,7 @@ export default function InformacionPersonal() {
             <TextInput
               style={[styles.input, styles.modalInput]}
               placeholder="Nueva contraseña"
-              placeholderTextColor="#999"
+              placeholderTextColor={textoSuave}
               secureTextEntry
               autoCapitalize="none"
               value={nuevaPassword}
@@ -521,7 +524,7 @@ export default function InformacionPersonal() {
             <TextInput
               style={[styles.input, styles.modalInput]}
               placeholder="Repetir contraseña"
-              placeholderTextColor="#999"
+              placeholderTextColor={textoSuave}
               secureTextEntry
               autoCapitalize="none"
               value={confirmarPassword}
@@ -555,237 +558,249 @@ export default function InformacionPersonal() {
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#F8F9FA',
-  },
-  flex: {
-    flex: 1,
-  },
-  content: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F1F3F5',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  title: {
-    color: '#1A1D1E',
-    fontSize: 28,
-    fontWeight: '700',
-    marginTop: 24,
-  },
-  avatarBlock: {
-    alignItems: 'center',
-    marginTop: 24,
-    marginBottom: 24,
-  },
-  avatarWrapper: {
-    width: 92,
-    height: 92,
-  },
-  avatarBorde: {
-    borderWidth: 2,
-    borderColor: PRIMARY,
-  },
-  editBadge: {
-    position: 'absolute',
-    right: -2,
-    bottom: -2,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: PRIMARY,
-    borderWidth: 2,
-    borderColor: '#F8F9FA',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarTitle: {
-    color: '#1A1D1E',
-    fontSize: 17,
-    fontWeight: '700',
-    marginTop: 12,
-  },
-  avatarCodigo: {
-    color: '#6C757D',
-    fontSize: 13,
-    marginTop: 4,
-  },
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: '#E5E8EB',
-    padding: 18,
-  },
-  campo: {
-    marginBottom: 16,
-  },
-  campoLabel: {
-    color: '#888888',
-    fontSize: 13,
-    marginBottom: 6,
-  },
-  input: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#F5F6F8',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: '#1A1D1E',
-  },
-  inputTexto: {
-    color: '#1A1D1E',
-    fontSize: 15,
-  },
-  inputPlaceholder: {
-    color: '#999',
-    fontSize: 15,
-  },
-  saveButton: {
-    backgroundColor: PRIMARY,
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  saveButtonDisabled: {
-    opacity: 0.5,
-  },
-  saveButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  sectionLabel: {
-    color: '#4A5359',
-    fontSize: 13,
-    fontWeight: '700',
-    marginTop: 28,
-    marginBottom: 10,
-    marginLeft: 2,
-  },
-  passwordRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  rowIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: '#EAF7EB',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 14,
-  },
-  rowLabel: {
-    flex: 1,
-    color: '#1A1D1E',
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  sheet: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 24,
-    maxHeight: '60%',
-  },
-  sheetTitle: {
-    color: '#1A1D1E',
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 10,
-  },
-  sheetItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-  },
-  sheetItemActive: {
-    backgroundColor: '#EAF7EB',
-  },
-  sheetItemText: {
-    color: '#1A1D1E',
-    fontSize: 16,
-  },
-  sheetItemTextActive: {
-    color: PRIMARY,
-    fontWeight: '700',
-  },
-  overlayCentro: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  modalCard: {
-    width: '100%',
-    maxWidth: 340,
-    backgroundColor: '#FFF',
-    borderRadius: 18,
-    padding: 20,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1A1D1E',
-    marginBottom: 6,
-  },
-  modalSubtext: {
-    fontSize: 13,
-    color: '#6C757D',
-    marginBottom: 16,
-  },
-  modalInput: {
-    marginBottom: 12,
-  },
-  modalButtonsRow: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 10,
-    marginTop: 8,
-  },
-  btnCancel: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 10,
-  },
-  btnCancelText: {
-    color: '#6C757D',
-    fontWeight: '600',
-  },
-  btnConfirm: {
-    backgroundColor: PRIMARY,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 10,
-  },
-  btnConfirmText: {
-    color: '#FFF',
-    fontWeight: '700',
-  },
-});
+const crearEstilos = ({
+  primario,
+  primarioSuave,
+  fondo,
+  tarjeta,
+  texto,
+  textoMedio,
+  textoSuave,
+  borde,
+  fondoSecundario,
+  fondoInput,
+}) =>
+  StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: fondo,
+    },
+    flex: {
+      flex: 1,
+    },
+    content: {
+      paddingHorizontal: 20,
+      paddingTop: 16,
+    },
+    backButton: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: fondoSecundario,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    title: {
+      color: texto,
+      fontSize: 28,
+      fontWeight: '700',
+      marginTop: 24,
+    },
+    avatarBlock: {
+      alignItems: 'center',
+      marginTop: 24,
+      marginBottom: 24,
+    },
+    avatarWrapper: {
+      width: 92,
+      height: 92,
+    },
+    avatarBorde: {
+      borderWidth: 2,
+      borderColor: primario,
+    },
+    editBadge: {
+      position: 'absolute',
+      right: -2,
+      bottom: -2,
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: primario,
+      borderWidth: 2,
+      borderColor: fondo,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    avatarTitle: {
+      color: texto,
+      fontSize: 17,
+      fontWeight: '700',
+      marginTop: 12,
+    },
+    avatarCodigo: {
+      color: textoSuave,
+      fontSize: 13,
+      marginTop: 4,
+    },
+    card: {
+      backgroundColor: tarjeta,
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: borde,
+      padding: 18,
+    },
+    campo: {
+      marginBottom: 16,
+    },
+    campoLabel: {
+      color: textoSuave,
+      fontSize: 13,
+      marginBottom: 6,
+    },
+    input: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: fondoInput,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: borde,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      fontSize: 15,
+      color: texto,
+    },
+    inputTexto: {
+      color: texto,
+      fontSize: 15,
+    },
+    inputPlaceholder: {
+      color: textoSuave,
+      fontSize: 15,
+    },
+    saveButton: {
+      backgroundColor: primario,
+      borderRadius: 14,
+      paddingVertical: 14,
+      alignItems: 'center',
+      marginTop: 20,
+    },
+    saveButtonDisabled: {
+      opacity: 0.5,
+    },
+    saveButtonText: {
+      color: '#FFFFFF',
+      fontSize: 16,
+      fontWeight: '700',
+    },
+    sectionLabel: {
+      color: textoMedio,
+      fontSize: 13,
+      fontWeight: '700',
+      marginTop: 28,
+      marginBottom: 10,
+      marginLeft: 2,
+    },
+    passwordRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    rowIcon: {
+      width: 40,
+      height: 40,
+      borderRadius: 12,
+      backgroundColor: primarioSuave,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: 14,
+    },
+    rowLabel: {
+      flex: 1,
+      color: texto,
+      fontSize: 16,
+      fontWeight: '500',
+    },
+    overlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      justifyContent: 'flex-end',
+    },
+    sheet: {
+      backgroundColor: tarjeta,
+      borderTopLeftRadius: 22,
+      borderTopRightRadius: 22,
+      paddingHorizontal: 20,
+      paddingTop: 20,
+      paddingBottom: 24,
+      maxHeight: '60%',
+    },
+    sheetTitle: {
+      color: texto,
+      fontSize: 18,
+      fontWeight: '700',
+      marginBottom: 10,
+    },
+    sheetItem: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: 14,
+      paddingHorizontal: 12,
+      borderRadius: 10,
+    },
+    sheetItemActive: {
+      backgroundColor: primarioSuave,
+    },
+    sheetItemText: {
+      color: texto,
+      fontSize: 16,
+    },
+    sheetItemTextActive: {
+      color: primario,
+      fontWeight: '700',
+    },
+    overlayCentro: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 20,
+    },
+    modalCard: {
+      width: '100%',
+      maxWidth: 340,
+      backgroundColor: tarjeta,
+      borderRadius: 18,
+      padding: 20,
+    },
+    modalTitle: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: texto,
+      marginBottom: 6,
+    },
+    modalSubtext: {
+      fontSize: 13,
+      color: textoSuave,
+      marginBottom: 16,
+    },
+    modalInput: {
+      marginBottom: 12,
+    },
+    modalButtonsRow: {
+      flexDirection: 'row',
+      justifyContent: 'flex-end',
+      gap: 10,
+      marginTop: 8,
+    },
+    btnCancel: {
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      borderRadius: 10,
+    },
+    btnCancelText: {
+      color: textoSuave,
+      fontWeight: '600',
+    },
+    btnConfirm: {
+      backgroundColor: primario,
+      paddingHorizontal: 20,
+      paddingVertical: 10,
+      borderRadius: 10,
+    },
+    btnConfirmText: {
+      color: '#FFFFFF',
+      fontWeight: '700',
+    },
+  });

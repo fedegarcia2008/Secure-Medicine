@@ -15,9 +15,8 @@ import {
   useTamanoLetra,
 } from '../../context/TamanoLetraContext';
 
-
 export default function TamanoLetra() {
-  const { primario } = useColores();
+  const { primario, texto } = useColores();
   const styles = useEstilos(crearEstilos);
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -38,7 +37,7 @@ export default function TamanoLetra() {
           onPress={() => router.back()}
           activeOpacity={0.7}
         >
-          <Ionicons name="arrow-back" size={22} color="#1A1D1E" />
+          <Ionicons name="arrow-back" size={22} color={texto} />
         </TouchableOpacity>
 
         <Text style={styles.title}>Tamaño de letra</Text>
@@ -99,117 +98,128 @@ export default function TamanoLetra() {
   );
 }
 
-const crearEstilos = ({ primario, primarioSuave }) => StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#F8F9FA',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  content: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F1F3F5',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  title: {
-    color: '#1A1D1E',
-    fontSize: 28,
-    fontWeight: '700',
-    marginTop: 24,
-  },
-  subtitle: {
-    color: '#6C757D',
-    fontSize: 14,
-    lineHeight: 20,
-    marginTop: 6,
-  },
-  sectionLabel: {
-    color: '#4A5359',
-    fontSize: 13,
-    fontWeight: '700',
-    marginTop: 24,
-    marginBottom: 10,
-    marginLeft: 2,
-  },
-  previewCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: '#E5E8EB',
-  },
-  previewHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  previewIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: primarioSuave,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 14,
-  },
-  previewEmoji: {
-    fontSize: 26,
-  },
-  previewHeaderText: {
-    flex: 1,
-  },
-  previewLabel: {
-    color: '#888888',
-    fontSize: 13,
-    marginBottom: 3,
-  },
-  previewNombre: {
-    color: '#1A1D1E',
-    fontSize: 20,
-    fontWeight: '700',
-  },
-  previewValue: {
-    color: '#1A1D1E',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  separador: {
-    height: 1,
-    backgroundColor: '#E5E8EB',
-    marginVertical: 16,
-  },
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: '#E5E8EB',
-    overflow: 'hidden',
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 18,
-    paddingVertical: 16,
-  },
-  rowDivider: {
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E8EB',
-  },
-  rowLabel: {
-    color: '#1A1D1E',
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  rowLabelActive: {
-    color: primario,
-    fontWeight: '700',
-  },
-});
+const crearEstilos = ({
+  primario,
+  primarioSuave,
+  fondo,
+  tarjeta,
+  texto,
+  textoMedio,
+  textoSuave,
+  borde,
+  fondoSecundario,
+}) =>
+  StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: fondo,
+    },
+    scrollView: {
+      flex: 1,
+    },
+    content: {
+      paddingHorizontal: 20,
+      paddingTop: 16,
+    },
+    backButton: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: fondoSecundario,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    title: {
+      color: texto,
+      fontSize: 28,
+      fontWeight: '700',
+      marginTop: 24,
+    },
+    subtitle: {
+      color: textoSuave,
+      fontSize: 14,
+      lineHeight: 20,
+      marginTop: 6,
+    },
+    sectionLabel: {
+      color: textoMedio,
+      fontSize: 13,
+      fontWeight: '700',
+      marginTop: 24,
+      marginBottom: 10,
+      marginLeft: 2,
+    },
+    previewCard: {
+      backgroundColor: tarjeta,
+      borderRadius: 18,
+      padding: 18,
+      borderWidth: 1,
+      borderColor: borde,
+    },
+    previewHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    previewIcon: {
+      width: 52,
+      height: 52,
+      borderRadius: 26,
+      backgroundColor: primarioSuave,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: 14,
+    },
+    previewEmoji: {
+      fontSize: 26,
+    },
+    previewHeaderText: {
+      flex: 1,
+    },
+    previewLabel: {
+      color: textoSuave,
+      fontSize: 13,
+      marginBottom: 3,
+    },
+    previewNombre: {
+      color: texto,
+      fontSize: 20,
+      fontWeight: '700',
+    },
+    previewValue: {
+      color: texto,
+      fontSize: 15,
+      fontWeight: '600',
+    },
+    separador: {
+      height: 1,
+      backgroundColor: borde,
+      marginVertical: 16,
+    },
+    card: {
+      backgroundColor: tarjeta,
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: borde,
+      overflow: 'hidden',
+    },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 18,
+      paddingVertical: 16,
+    },
+    rowDivider: {
+      borderBottomWidth: 1,
+      borderBottomColor: borde,
+    },
+    rowLabel: {
+      color: texto,
+      fontSize: 16,
+      fontWeight: '500',
+    },
+    rowLabelActive: {
+      color: primario,
+      fontWeight: '700',
+    },
+  });

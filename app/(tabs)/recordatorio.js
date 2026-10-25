@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   View,
-  Text,
   Pressable,
   StyleSheet,
   ScrollView,
@@ -12,14 +11,14 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../services/Supabase';
+import Text from '../../components/Texto';
+import { useColores, useEstilos } from '../../context/ColorContext';
 import {
   FRECUENCIA_A_HORAS,
   formatearDosis,
   configurarNotificaciones,
   programarNotificaciones,
 } from '../../services/Notificaciones';
-
-const PRIMARY = '#4CAF50';
 
 const DIAS_SEMANA = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
 
@@ -64,6 +63,8 @@ function generarDiasDelMes(mesRef) {
 }
 
 export default function Recordatorio() {
+  const { primario, texto, textoSuave } = useColores();
+  const styles = useEstilos(crearEstilos);
   const router = useRouter();
 
   const { nombre, frecuencia } = useLocalSearchParams();
@@ -130,8 +131,8 @@ export default function Recordatorio() {
     }
   };
 
-  const handleHoraTextChange = (texto) => {
-    const numeros = texto
+  const handleHoraTextChange = (valor) => {
+    const numeros = valor
       .replace(/[^0-9]/g, '')
       .slice(0, 4);
 
@@ -273,11 +274,7 @@ export default function Recordatorio() {
         onPress={() => router.back()}
         hitSlop={10}
       >
-        <Ionicons
-          name="arrow-back"
-          size={22}
-          color="#333"
-        />
+        <Ionicons name="arrow-back" size={22} color={texto} />
       </Pressable>
 
       <ScrollView
@@ -317,11 +314,7 @@ export default function Recordatorio() {
                 {formatearFecha(fechaInicio)}
               </Text>
 
-              <Ionicons
-                name="chevron-down"
-                size={18}
-                color={PRIMARY}
-              />
+              <Ionicons name="chevron-down" size={18} color={primario} />
             </View>
           </Pressable>
 
@@ -343,11 +336,7 @@ export default function Recordatorio() {
                 {hora}
               </Text>
 
-              <Ionicons
-                name="chevron-down"
-                size={18}
-                color={PRIMARY}
-              />
+              <Ionicons name="chevron-down" size={18} color={primario} />
             </View>
           </Pressable>
 
@@ -369,11 +358,7 @@ export default function Recordatorio() {
                 {formatearDosis(dosis)} comprimido(s)
               </Text>
 
-              <Ionicons
-                name="chevron-down"
-                size={18}
-                color={PRIMARY}
-              />
+              <Ionicons name="chevron-down" size={18} color={primario} />
             </View>
           </Pressable>
         </View>
@@ -395,11 +380,7 @@ export default function Recordatorio() {
                 {limiteDosis} comprimido(s)
               </Text>
 
-              <Ionicons
-                name="chevron-down"
-                size={18}
-                color={PRIMARY}
-              />
+              <Ionicons name="chevron-down" size={18} color={primario} />
             </View>
           </Pressable>
         </View>
@@ -425,6 +406,7 @@ export default function Recordatorio() {
         visible={calendarioVisible}
         transparent
         animationType="fade"
+        onRequestClose={() => setCalendarioVisible(false)}
       >
         <Pressable
           style={styles.overlay}
@@ -435,15 +417,8 @@ export default function Recordatorio() {
             onPress={() => {}}
           >
             <View style={styles.calendarHeader}>
-              <Pressable
-                onPress={() => cambiarMes(-1)}
-                hitSlop={10}
-              >
-                <Ionicons
-                  name="chevron-back"
-                  size={22}
-                  color="#333"
-                />
+              <Pressable onPress={() => cambiarMes(-1)} hitSlop={10}>
+                <Ionicons name="chevron-back" size={22} color={texto} />
               </Pressable>
 
               <Text style={styles.calendarTitulo}>
@@ -451,24 +426,14 @@ export default function Recordatorio() {
                 {mesVisible.getFullYear()}
               </Text>
 
-              <Pressable
-                onPress={() => cambiarMes(1)}
-                hitSlop={10}
-              >
-                <Ionicons
-                  name="chevron-forward"
-                  size={22}
-                  color="#333"
-                />
+              <Pressable onPress={() => cambiarMes(1)} hitSlop={10}>
+                <Ionicons name="chevron-forward" size={22} color={texto} />
               </Pressable>
             </View>
 
             <View style={styles.semanaRow}>
               {DIAS_SEMANA.map((d) => (
-                <Text
-                  key={d}
-                  style={styles.diaSemanaTexto}
-                >
+                <Text key={d} style={styles.diaSemanaTexto}>
                   {d}
                 </Text>
               ))}
@@ -523,6 +488,7 @@ export default function Recordatorio() {
         visible={horaVisible}
         transparent
         animationType="fade"
+        onRequestClose={() => setHoraVisible(false)}
       >
         <Pressable
           style={styles.overlay}
@@ -541,16 +507,13 @@ export default function Recordatorio() {
               value={horaTemp}
               onChangeText={handleHoraTextChange}
               placeholder="00:00"
-              placeholderTextColor="#bbb"
+              placeholderTextColor={textoSuave}
               keyboardType="number-pad"
               maxLength={5}
               autoFocus
             />
 
-            <Pressable
-              style={styles.modalBoton}
-              onPress={confirmarHora}
-            >
+            <Pressable style={styles.modalBoton} onPress={confirmarHora}>
               <Text style={styles.modalBotonTexto}>
                 Confirmar
               </Text>
@@ -564,6 +527,7 @@ export default function Recordatorio() {
         visible={dosisVisible}
         transparent
         animationType="fade"
+        onRequestClose={() => setDosisVisible(false)}
       >
         <Pressable
           style={styles.overlay}
@@ -592,11 +556,7 @@ export default function Recordatorio() {
                   setDosisTemp(formatearDosis(n));
                 }}
               >
-                <Ionicons
-                  name="remove"
-                  size={22}
-                  color={PRIMARY}
-                />
+                <Ionicons name="remove" size={22} color={primario} />
               </Pressable>
 
               <TextInput
@@ -621,11 +581,7 @@ export default function Recordatorio() {
                   setDosisTemp(formatearDosis(n));
                 }}
               >
-                <Ionicons
-                  name="add"
-                  size={22}
-                  color={PRIMARY}
-                />
+                <Ionicons name="add" size={22} color={primario} />
               </Pressable>
             </View>
 
@@ -633,10 +589,7 @@ export default function Recordatorio() {
               Podés escribir medias dosis, ej: 0,5
             </Text>
 
-            <Pressable
-              style={styles.modalBoton}
-              onPress={confirmarDosis}
-            >
+            <Pressable style={styles.modalBoton} onPress={confirmarDosis}>
               <Text style={styles.modalBotonTexto}>
                 Confirmar
               </Text>
@@ -650,6 +603,7 @@ export default function Recordatorio() {
         visible={limiteVisible}
         transparent
         animationType="fade"
+        onRequestClose={() => setLimiteVisible(false)}
       >
         <Pressable
           style={styles.overlay}
@@ -675,11 +629,7 @@ export default function Recordatorio() {
                   setLimiteTemp(String(n));
                 }}
               >
-                <Ionicons
-                  name="remove"
-                  size={22}
-                  color={PRIMARY}
-                />
+                <Ionicons name="remove" size={22} color={primario} />
               </Pressable>
 
               <TextInput
@@ -701,18 +651,11 @@ export default function Recordatorio() {
                   setLimiteTemp(String(n));
                 }}
               >
-                <Ionicons
-                  name="add"
-                  size={22}
-                  color={PRIMARY}
-                />
+                <Ionicons name="add" size={22} color={primario} />
               </Pressable>
             </View>
 
-            <Pressable
-              style={styles.modalBoton}
-              onPress={confirmarLimite}
-            >
+            <Pressable style={styles.modalBoton} onPress={confirmarLimite}>
               <Text style={styles.modalBotonTexto}>
                 Confirmar
               </Text>
@@ -724,269 +667,281 @@ export default function Recordatorio() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-    paddingTop: 50,
-  },
+const crearEstilos = ({
+  primario,
+  primarioSuave,
+  fondo,
+  tarjeta,
+  texto,
+  textoSuave,
+  borde,
+  fondoSecundario,
+}) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: fondo,
+      paddingTop: 50,
+    },
 
-  backButton: {
-    marginLeft: 16,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#f0f0f0',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+    backButton: {
+      marginLeft: 16,
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: fondoSecundario,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
 
-  content: {
-    paddingHorizontal: 20,
-    paddingTop: 10,
-    paddingBottom: 20,
-  },
+    content: {
+      paddingHorizontal: 20,
+      paddingTop: 10,
+      paddingBottom: 20,
+    },
 
-  illustration: {
-    alignSelf: 'center',
-    width: 140,
-    height: 130,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    marginVertical: 10,
-  },
+    illustration: {
+      alignSelf: 'center',
+      width: 140,
+      height: 130,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      marginVertical: 10,
+    },
 
-  bellEmoji: {
-    fontSize: 40,
-  },
+    bellEmoji: {
+      fontSize: 40,
+    },
 
-  phoneIcon: {
-    width: 70,
-    height: 100,
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: '#333',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+    phoneIcon: {
+      width: 70,
+      height: 100,
+      borderRadius: 14,
+      borderWidth: 2,
+      borderColor: texto,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
 
-  screenBar: {
-    width: 44,
-    height: 16,
-    borderRadius: 4,
-    backgroundColor: '#a8dadc',
-  },
+    screenBar: {
+      width: 44,
+      height: 16,
+      borderRadius: 4,
+      backgroundColor: primarioSuave,
+    },
 
-  subtitle: {
-    fontSize: 13,
-    color: '#888',
-    marginTop: 8,
-  },
+    subtitle: {
+      fontSize: 13,
+      color: textoSuave,
+      marginTop: 8,
+    },
 
-  title: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#1a1a1a',
-    marginTop: 6,
-    marginBottom: 24,
-    lineHeight: 28,
-  },
+    title: {
+      fontSize: 22,
+      fontWeight: '700',
+      color: texto,
+      marginTop: 6,
+      marginBottom: 24,
+      lineHeight: 28,
+    },
 
-  campos: {
-    backgroundColor: '#f5f6f8',
-    borderRadius: 14,
-    paddingHorizontal: 18,
-  },
+    campos: {
+      backgroundColor: tarjeta,
+      borderWidth: 1,
+      borderColor: borde,
+      borderRadius: 14,
+      paddingHorizontal: 18,
+    },
 
-  campoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 18,
-  },
+    campoRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 18,
+    },
 
-  campoLabel: {
-    fontSize: 16,
-    color: '#222',
-  },
+    campoLabel: {
+      fontSize: 16,
+      color: texto,
+    },
 
-  campoValorContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
+    campoValorContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
 
-  campoValor: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: PRIMARY,
-  },
+    campoValor: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: primario,
+    },
 
-  separador: {
-    height: 1,
-    backgroundColor: '#e5e5e5',
-  },
+    separador: {
+      height: 1,
+      backgroundColor: borde,
+    },
 
-  footer: {
-    paddingHorizontal: 20,
-    paddingBottom: 30,
-    paddingTop: 10,
-  },
+    footer: {
+      paddingHorizontal: 20,
+      paddingBottom: 30,
+      paddingTop: 10,
+    },
 
-  button: {
-    backgroundColor: PRIMARY,
-    paddingVertical: 16,
-    borderRadius: 30,
-    alignItems: 'center',
-  },
+    button: {
+      backgroundColor: primario,
+      paddingVertical: 16,
+      borderRadius: 30,
+      alignItems: 'center',
+    },
 
-  buttonText: {
-    color: '#fff',
-    fontSize: 17,
-    fontWeight: '700',
-  },
+    buttonText: {
+      color: '#FFFFFF',
+      fontSize: 17,
+      fontWeight: '700',
+    },
 
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
+    overlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.4)',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: 24,
+    },
 
-  modalCard: {
-    width: '100%',
-    maxWidth: 340,
-    backgroundColor: '#fff',
-    borderRadius: 18,
-    padding: 18,
-  },
+    modalCard: {
+      width: '100%',
+      maxWidth: 340,
+      backgroundColor: tarjeta,
+      borderRadius: 18,
+      padding: 18,
+    },
 
-  modalCardChico: {
-    width: '100%',
-    maxWidth: 300,
-    backgroundColor: '#fff',
-    borderRadius: 18,
-    padding: 22,
-    alignItems: 'center',
-  },
+    modalCardChico: {
+      width: '100%',
+      maxWidth: 300,
+      backgroundColor: tarjeta,
+      borderRadius: 18,
+      padding: 22,
+      alignItems: 'center',
+    },
 
-  modalTitulo: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#222',
-    marginBottom: 16,
-  },
+    modalTitulo: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: texto,
+      marginBottom: 16,
+    },
 
-  calendarHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
+    calendarHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 12,
+    },
 
-  calendarTitulo: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#222',
-  },
+    calendarTitulo: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: texto,
+    },
 
-  semanaRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 6,
-  },
+    semanaRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginBottom: 6,
+    },
 
-  diaSemanaTexto: {
-    width: 36,
-    textAlign: 'center',
-    fontSize: 12,
-    color: '#999',
-    fontWeight: '600',
-  },
+    diaSemanaTexto: {
+      width: 36,
+      textAlign: 'center',
+      fontSize: 12,
+      color: textoSuave,
+      fontWeight: '600',
+    },
 
-  diasGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
+    diasGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+    },
 
-  diaCelda: {
-    width: '14.28%',
-    aspectRatio: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginVertical: 2,
-  },
+    diaCelda: {
+      width: '14.28%',
+      aspectRatio: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginVertical: 2,
+    },
 
-  diaCeldaActiva: {
-    backgroundColor: PRIMARY,
-    borderRadius: 100,
-  },
+    diaCeldaActiva: {
+      backgroundColor: primario,
+      borderRadius: 100,
+    },
 
-  diaTexto: {
-    fontSize: 14,
-    color: '#333',
-  },
+    diaTexto: {
+      fontSize: 14,
+      color: texto,
+    },
 
-  diaTextoActivo: {
-    color: '#fff',
-    fontWeight: '700',
-  },
+    diaTextoActivo: {
+      color: '#FFFFFF',
+      fontWeight: '700',
+    },
 
-  horaInput: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: '#222',
-    borderBottomWidth: 2,
-    borderBottomColor: PRIMARY,
-    paddingVertical: 6,
-    paddingHorizontal: 24,
-    marginBottom: 20,
-    textAlign: 'center',
-  },
+    horaInput: {
+      fontSize: 32,
+      fontWeight: '700',
+      color: texto,
+      borderBottomWidth: 2,
+      borderBottomColor: primario,
+      paddingVertical: 6,
+      paddingHorizontal: 24,
+      marginBottom: 20,
+      textAlign: 'center',
+    },
 
-  stepperRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    marginBottom: 20,
-  },
+    stepperRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 14,
+      marginBottom: 20,
+    },
 
-  stepperBoton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#eaf7eb',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+    stepperBoton: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: primarioSuave,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
 
-  stepperInput: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#222',
-    minWidth: 60,
-  },
+    stepperInput: {
+      fontSize: 24,
+      fontWeight: '700',
+      color: texto,
+      minWidth: 60,
+    },
 
-  ayudaTexto: {
-    fontSize: 12,
-    color: '#999',
-    marginTop: -10,
-    marginBottom: 16,
-  },
+    ayudaTexto: {
+      fontSize: 12,
+      color: textoSuave,
+      marginTop: -10,
+      marginBottom: 16,
+    },
 
-  modalBoton: {
-    backgroundColor: PRIMARY,
-    paddingVertical: 12,
-    paddingHorizontal: 30,
-    borderRadius: 30,
-  },
+    modalBoton: {
+      backgroundColor: primario,
+      paddingVertical: 12,
+      paddingHorizontal: 30,
+      borderRadius: 30,
+    },
 
-  modalBotonTexto: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-});
+    modalBotonTexto: {
+      color: '#FFFFFF',
+      fontSize: 15,
+      fontWeight: '700',
+    },
+  });

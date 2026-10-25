@@ -19,7 +19,7 @@ import {
 export default function ColorPrincipal() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { primario } = useColores();
+  const { primario, texto } = useColores();
   const styles = useEstilos(crearEstilos);
   const { colorActual, setColor } = useColorElegido();
 
@@ -38,7 +38,7 @@ export default function ColorPrincipal() {
           onPress={() => router.back()}
           activeOpacity={0.7}
         >
-          <Ionicons name="arrow-back" size={22} color="#1A1D1E" />
+          <Ionicons name="arrow-back" size={22} color={texto} />
         </TouchableOpacity>
 
         <Text style={styles.title}>Color principal</Text>
@@ -108,11 +108,21 @@ export default function ColorPrincipal() {
   );
 }
 
-const crearEstilos = ({ primario, primarioSuave }) =>
+const crearEstilos = ({
+  primario,
+  primarioSuave,
+  fondo,
+  tarjeta,
+  texto,
+  textoMedio,
+  textoSuave,
+  borde,
+  fondoSecundario,
+}) =>
   StyleSheet.create({
     safeArea: {
       flex: 1,
-      backgroundColor: '#F8F9FA',
+      backgroundColor: fondo,
     },
     scrollView: {
       flex: 1,
@@ -125,24 +135,24 @@ const crearEstilos = ({ primario, primarioSuave }) =>
       width: 40,
       height: 40,
       borderRadius: 20,
-      backgroundColor: '#F1F3F5',
+      backgroundColor: fondoSecundario,
       justifyContent: 'center',
       alignItems: 'center',
     },
     title: {
-      color: '#1A1D1E',
+      color: texto,
       fontSize: 28,
       fontWeight: '700',
       marginTop: 24,
     },
     subtitle: {
-      color: '#6C757D',
+      color: textoSuave,
       fontSize: 14,
       lineHeight: 20,
       marginTop: 6,
     },
     sectionLabel: {
-      color: '#4A5359',
+      color: textoMedio,
       fontSize: 13,
       fontWeight: '700',
       marginTop: 24,
@@ -150,11 +160,11 @@ const crearEstilos = ({ primario, primarioSuave }) =>
       marginLeft: 2,
     },
     previewCard: {
-      backgroundColor: '#FFFFFF',
+      backgroundColor: tarjeta,
       borderRadius: 18,
       padding: 18,
       borderWidth: 1,
-      borderColor: '#E5E8EB',
+      borderColor: borde,
     },
     previewRow: {
       flexDirection: 'row',
@@ -199,10 +209,10 @@ const crearEstilos = ({ primario, primarioSuave }) =>
     grid: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      backgroundColor: '#FFFFFF',
+      backgroundColor: tarjeta,
       borderRadius: 18,
       borderWidth: 1,
-      borderColor: '#E5E8EB',
+      borderColor: borde,
       padding: 12,
     },
     swatchItem: {
@@ -233,7 +243,7 @@ const crearEstilos = ({ primario, primarioSuave }) =>
       marginTop: 8,
       fontSize: 13,
       fontWeight: '600',
-      color: '#4A5359',
+      color: textoMedio,
     },
     swatchNameActive: {
       color: primario,

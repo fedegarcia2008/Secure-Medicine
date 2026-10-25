@@ -1,18 +1,21 @@
 import { useMemo } from 'react';
 import {
   View,
-  Text,
   Pressable,
   StyleSheet,
   ScrollView,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import Text from '../../components/Texto';
+import { useColores, useEstilos } from '../../context/ColorContext';
 import { medicamentos } from '../../data/medicamentos';
 
-const PRIMARY = '#4CAF50';
+const DANGER = '#E53935';
 
 export default function AgregarFrecuencia() {
+  const { primario, texto, textoSuave } = useColores();
+  const styles = useEstilos(crearEstilos);
   const router = useRouter();
 
   const { id } = useLocalSearchParams();
@@ -59,7 +62,7 @@ export default function AgregarFrecuencia() {
           onPress={() => router.back()}
           hitSlop={10}
         >
-          <Ionicons name="arrow-back" size={22} color="#333" />
+          <Ionicons name="arrow-back" size={22} color={texto} />
         </Pressable>
 
         <Text style={styles.headerTitle}>
@@ -106,17 +109,20 @@ export default function AgregarFrecuencia() {
 
         {/* Opciones */}
         <View style={styles.opciones}>
-          {frecuencias.map((frecuencia) => (
+          {frecuencias.map((frecuencia, index) => (
             <Pressable
               key={frecuencia}
-              style={styles.opcion}
+              style={[
+                styles.opcion,
+                index === frecuencias.length - 1 && styles.opcionUltima,
+              ]}
               onPress={() => seleccionarFrecuencia(frecuencia)}
             >
               <View style={styles.opcionIcon}>
                 <Ionicons
                   name="time-outline"
                   size={20}
-                  color={PRIMARY}
+                  color={primario}
                 />
               </View>
 
@@ -127,7 +133,7 @@ export default function AgregarFrecuencia() {
               <Ionicons
                 name="chevron-forward"
                 size={20}
-                color="#bbb"
+                color={textoSuave}
               />
             </Pressable>
           ))}
@@ -138,139 +144,156 @@ export default function AgregarFrecuencia() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
+const crearEstilos = ({
+  primarioSuave,
+  fondo,
+  tarjeta,
+  texto,
+  textoSuave,
+  borde,
+  fondoSecundario,
+}) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: fondo,
+    },
 
-  header: {
-    paddingTop: 50,
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
+    header: {
+      paddingTop: 50,
+      paddingHorizontal: 16,
+      paddingBottom: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      borderBottomWidth: 1,
+      borderBottomColor: borde,
+    },
 
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#f0f0f0',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+    backButton: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: fondoSecundario,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
 
-  headerTitle: {
-    flex: 1,
-    textAlign: 'center',
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#222',
-  },
+    headerTitle: {
+      flex: 1,
+      textAlign: 'center',
+      fontSize: 20,
+      fontWeight: '700',
+      color: texto,
+    },
 
-  headerSpace: {
-    width: 40,
-  },
+    headerSpace: {
+      width: 40,
+    },
 
-  content: {
-    padding: 20,
-    paddingBottom: 40,
-  },
+    content: {
+      padding: 20,
+      paddingBottom: 40,
+    },
 
-  medicamentoCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f5f6f8',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 28,
-  },
+    medicamentoCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: tarjeta,
+      borderWidth: 1,
+      borderColor: borde,
+      borderRadius: 16,
+      padding: 16,
+      marginBottom: 28,
+    },
 
-  medicamentoIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: '#eaf7eb',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 14,
-  },
+    medicamentoIcon: {
+      width: 52,
+      height: 52,
+      borderRadius: 26,
+      backgroundColor: primarioSuave,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 14,
+    },
 
-  emoji: {
-    fontSize: 26,
-  },
+    emoji: {
+      fontSize: 26,
+    },
 
-  label: {
-    fontSize: 12,
-    color: '#888',
-    marginBottom: 3,
-  },
+    label: {
+      fontSize: 12,
+      color: textoSuave,
+      marginBottom: 3,
+    },
 
-  nombre: {
-    fontSize: 19,
-    fontWeight: '700',
-    color: '#222',
-  },
+    nombre: {
+      fontSize: 19,
+      fontWeight: '700',
+      color: texto,
+    },
 
-  categoria: {
-    fontSize: 13,
-    color: '#888',
-    marginTop: 3,
-  },
+    categoria: {
+      fontSize: 13,
+      color: textoSuave,
+      marginTop: 3,
+    },
 
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#222',
-    marginBottom: 6,
-  },
+    title: {
+      fontSize: 24,
+      fontWeight: '700',
+      color: texto,
+      marginBottom: 6,
+    },
 
-  subtitle: {
-    fontSize: 14,
-    color: '#888',
-    lineHeight: 20,
-    marginBottom: 20,
-  },
+    subtitle: {
+      fontSize: 14,
+      color: textoSuave,
+      lineHeight: 20,
+      marginBottom: 20,
+    },
 
-  opciones: {
-    backgroundColor: '#f5f6f8',
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
+    opciones: {
+      backgroundColor: tarjeta,
+      borderWidth: 1,
+      borderColor: borde,
+      borderRadius: 16,
+      overflow: 'hidden',
+    },
 
-  opcion: {
-    minHeight: 62,
-    paddingHorizontal: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e5e5',
-  },
+    opcion: {
+      minHeight: 62,
+      paddingHorizontal: 16,
+      flexDirection: 'row',
+      alignItems: 'center',
+      borderBottomWidth: 1,
+      borderBottomColor: borde,
+    },
 
-  opcionIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#eaf7eb',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
+    opcionUltima: {
+      borderBottomWidth: 0,
+    },
 
-  opcionTexto: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#222',
-  },
+    opcionIcon: {
+      width: 38,
+      height: 38,
+      borderRadius: 19,
+      backgroundColor: primarioSuave,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 12,
+    },
 
-  error: {
-    margin: 30,
-    fontSize: 18,
-    color: '#d32f2f',
-    textAlign: 'center',
-  },
-});
+    opcionTexto: {
+      flex: 1,
+      fontSize: 16,
+      fontWeight: '600',
+      color: texto,
+    },
+
+    error: {
+      margin: 30,
+      fontSize: 18,
+      color: DANGER,
+      textAlign: 'center',
+    },
+  });
