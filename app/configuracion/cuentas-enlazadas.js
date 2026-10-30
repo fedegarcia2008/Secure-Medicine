@@ -13,6 +13,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { supabase } from '../../services/Supabase';
+import Avatar, { AVATAR_POR_DEFECTO } from '../../components/Avatar';
 import Text from '../../components/Texto';
 import { useColores, useEstilos } from '../../context/ColorContext';
 
@@ -48,7 +49,9 @@ export default function CuentasEnlazadas() {
           perfiles:observado_id (
             id,
             apodo,
-            codigo
+            codigo,
+            avatar_animal,
+            avatar_color
           )
         `)
         .eq('observador_id', user.id);
@@ -245,11 +248,12 @@ export default function CuentasEnlazadas() {
                   index < cuentas.length - 1 && styles.rowDivider,
                 ]}
               >
-                <View style={styles.avatar}>
-                  <Text style={styles.avatarText}>
-                    {(cuenta.apodo || '?').charAt(0).toUpperCase()}
-                  </Text>
-                </View>
+                <Avatar
+                  animal={cuenta.avatar_animal || AVATAR_POR_DEFECTO.animal}
+                  color={cuenta.avatar_color || AVATAR_POR_DEFECTO.color}
+                  size={44}
+                  style={styles.avatar}
+                />
 
                 <View style={styles.rowTextContainer}>
                   <Text style={styles.rowLabel}>
@@ -387,18 +391,7 @@ const crearEstilos = ({ primario, primarioSuave, fondo, tarjeta, texto, textoSua
     borderBottomColor: borde,
   },
   avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: primarioSuave,
-    justifyContent: 'center',
-    alignItems: 'center',
     marginRight: 14,
-  },
-  avatarText: {
-    color: primario,
-    fontSize: 18,
-    fontWeight: '700',
   },
   rowTextContainer: {
     flex: 1,

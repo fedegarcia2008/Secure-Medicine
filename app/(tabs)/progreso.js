@@ -11,17 +11,17 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from 'expo-router';
 import { supabase } from '../../services/Supabase';
+import {
+  verificarYLimitarMedicamento,
+  obtenerConsumo,
+  fechaHoyString,
+} from '../../services/limiteDosis';
 import Text from '../../components/Texto';
 import TabBar from '../../components/TabBar';
 import { useColores, useEstilos } from '../../context/ColorContext';
 
 function getClaveHoy() {
-  const hoy = new Date();
-  const yyyy = hoy.getFullYear();
-  const mm = String(hoy.getMonth() + 1).padStart(2, '0');
-  const dd = String(hoy.getDate()).padStart(2, '0');
-
-  return `@progreso_${yyyy}-${mm}-${dd}`;
+  return `@progreso_${fechaHoyString()}`;
 }
 
 function convertirHoraAMinutos(horaTexto) {
@@ -136,52 +136,6 @@ function obtenerEstadoVentana(horaToma) {
   };
 }
 
-async function verificarYLimitarMedicamento(med) {
-  try {
-    const idMed = med.id;
-    if (!idMed) return false;
-
-    const allKeys = await AsyncStorage.getAllKeys();
-    const progresoKeys = allKeys.filter(key => key.startsWith('@progreso_'));
-    
-    if (progresoKeys.length === 0) return false;
-
-    const stores = await AsyncStorage.multiGet(progresoKeys);
-    
-    let totalConsumido = 0;
-    const dosisPorToma = Number(med.dosis) || 1;
-
-    stores.forEach(([key, value]) => {
-      if (!value) return;
-      try {
-        const data = JSON.parse(value);
-        Object.keys(data).forEach(tomaKey => {
-          if (tomaKey.startsWith(`${idMed}_`) && data[tomaKey] === true) {
-            totalConsumido += dosisPorToma;
-          }
-        });
-      } catch (e) {}
-    });
-
-    const limite = Number(med.limite_dosis) || 30;
-
-    if (totalConsumido >= limite) {
-      const { error } = await supabase
-        .from('medicamentos')
-        .update({ en_tratamiento: false })
-        .eq('id', idMed);
-
-      if (error) {
-        console.log('Error actualizando en_tratamiento:', error.message);
-      }
-      return true;
-    }
-  } catch (error) {
-    console.log('Error verificando límite de dosis:', error);
-  }
-  return false;
-}
-
 export default function Progreso() {
   const { primario } = useColores();
   const styles = useEstilos(crearEstilos);
@@ -218,7 +172,7 @@ export default function Progreso() {
         const meds = medsData || [];
         const medsActivos = [];
         for (const med of meds) {
-          const alcanzo = await verificarYLimitarMedicamento(med);
+          const alcanzo = await verificarYLimitarMedicamento(med, fechaHoyString());
           if (!alcanzo) {
             medsActivos.push(med);
           }
@@ -280,16 +234,19 @@ export default function Progreso() {
       );
 
       if (nuevoEstado) {
-        const medEncontrado = medicamentos.find(m => m.id === idMed);
+        const medEncontrado = medicamentos.find((m) => m.id === idMed);
         if (medEncontrado) {
-          const alcanzoLimite = await verificarYLimitarMedicamento(medEncontrado);
-          if (alcanzoLimite) {
+          const { incluyendoDia } = await obtenerConsumo(
+            medEncontrado,
+            fechaHoyString()
+          );
+          const limite = Number(medEncontrado.limite_dosis) || 30;
+
+          if (incluyendoDia >= limite) {
             Alert.alert(
-              '¡Tratamiento finalizado!',
-              `Has alcanzado el límite de dosis de "${medEncontrado.nombre}". El medicamento ha finalizado y ya no aparecerá en tus pantallas ni en el calendario.`
+              '¡Último comprimido!',
+              `Completaste el límite de "${medEncontrado.nombre}". Ya no aparecerá a partir de mañana.`
             );
-            cargarDatos();
-            return;
           }
         }
       }
